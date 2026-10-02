@@ -300,7 +300,7 @@ export default function App() {
       </main>
 
       {/* Bottom Navigation Bar for Mobile (Smartphones) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-rose-100 shadow-lg px-2 py-1.5">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-rose-100 shadow-lg px-2 py-3">
         <div className="flex items-center justify-around max-w-md mx-auto">
           {/* Pedidos */}
           <button
