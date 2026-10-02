@@ -507,11 +507,12 @@ export const ClientCard: React.FC<ClientCardProps> = ({
         {onCreateOrderForClient && (
           <button
             onClick={() => onCreateOrderForClient(client.id)}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-800 hover:bg-purple-50 transition"
-            title="Nuevo pedido para este cliente"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200/70 transition active:scale-95 shadow-2xs"
+            title="Añadir pedido para este cliente"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Nuevo pedido</span>
+            <Plus className="w-3.5 h-3.5 text-purple-700" />
+            <ShoppingBag className="w-3.5 h-3.5 text-purple-700" />
+            <span className="font-bold">Pedido</span>
           </button>
         )}
       </div>

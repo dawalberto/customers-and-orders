@@ -2,5 +2,7 @@
   "name": "Mis Pedidos - Bisutería y Clientes",
   "description": "Webapp PWA para gestionar clientes, pedidos de bisutería y pendientes con control de estados, entregas y análisis.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

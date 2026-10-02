@@ -212,24 +212,32 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
         </button>
       </div>
 
-      {/* 2. Client Filter Banner - PLACED DIRECTLY ABOVE FILTERS as requested */}
+      {/* 2. Client Filter Banner - Prominent client name and compact clear button */}
       {activeClientId !== 'all' && selectedClientObj && (
-        <div className="bg-purple-100/70 border border-purple-200 rounded-2xl p-3 flex items-center justify-between text-xs text-purple-950 animate-in fade-in duration-150">
-          <div className="flex items-center gap-2 min-w-0">
-            <User className="w-4 h-4 text-purple-700 shrink-0" />
-            <span className="truncate">
-              Filtrando pedidos de: <strong>{selectedClientObj.name} {selectedClientObj.surnames}</strong>
-            </span>
+        <div className="bg-purple-100/80 border border-purple-200/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 text-xs text-purple-950 animate-in fade-in duration-150 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-8 h-8 rounded-xl bg-purple-200 text-purple-800 flex items-center justify-center shrink-0">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1 leading-tight">
+              <span className="text-[10px] text-purple-700 font-semibold block uppercase tracking-wider">
+                Cliente seleccionado:
+              </span>
+              <span className="font-extrabold text-slate-900 text-xs sm:text-sm block truncate">
+                {selectedClientObj.name} {selectedClientObj.surnames}
+              </span>
+            </div>
           </div>
           <button
             onClick={() => {
               setActiveClientId('all');
               if (onClearClientFilter) onClearClientFilter();
             }}
-            className="inline-flex items-center gap-1 font-semibold text-purple-800 hover:text-purple-950 bg-white/80 hover:bg-white px-2.5 py-1 rounded-xl transition shrink-0 ml-2 shadow-2xs"
+            className="inline-flex items-center gap-1 font-bold text-purple-900 bg-white hover:bg-purple-50 border border-purple-200 px-2.5 py-1.5 rounded-xl transition shrink-0 shadow-2xs active:scale-95"
+            title="Quitar filtro de cliente y ver todos"
           >
             <X className="w-3.5 h-3.5" />
-            <span>Ver todos los clientes</span>
+            <span className="text-xs">Ver todos</span>
           </button>
         </div>
       )}
