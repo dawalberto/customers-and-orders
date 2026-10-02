@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, UserPlus, Users, X, Sparkles, Filter } from 'lucide-react';
+import { Search, UserPlus, Users, X, Filter } from 'lucide-react';
 import { Client, Order } from '../../types';
 import { ClientCard } from './ClientCard';
 import { ClientModal } from './ClientModal';
@@ -40,7 +40,6 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     const query = normalizeSearch(searchTerm);
 
     return clients.filter((c) => {
-      // Tag filter
       if (selectedTag && !c.tags?.includes(selectedTag)) {
         return false;
       }
@@ -66,17 +65,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   }, [clients, searchTerm, selectedTag]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-x-hidden">
       {/* Top action & search header */}
       <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-400" />
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por nombre, dirección, etiqueta o teléfono..."
-            className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white border border-rose-200/80 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none text-sm placeholder:text-slate-400 shadow-2xs transition"
+            className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white border border-slate-200/90 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm placeholder:text-slate-400 shadow-2xs transition"
           />
           {searchTerm && (
             <button
@@ -90,9 +89,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-sm shadow-xs transition active:scale-95 shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-sm shadow-xs transition active:scale-95 shrink-0"
         >
-          <UserPlus className="w-4 h-4" />
+          <UserPlus className="w-4 h-4 text-purple-300" />
           <span>Añadir Cliente</span>
         </button>
       </div>
@@ -106,10 +105,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           </span>
           <button
             onClick={() => setSelectedTag(null)}
-            className={`px-2.5 py-1 rounded-xl text-xs font-medium shrink-0 transition ${
+            className={`px-2.5 py-1 rounded-xl text-xs font-semibold shrink-0 transition ${
               selectedTag === null
-                ? 'bg-rose-500 text-white font-semibold'
-                : 'bg-white text-slate-600 hover:bg-rose-50 border border-rose-100'
+                ? 'bg-zinc-900 text-white'
+                : 'bg-white text-slate-600 hover:bg-purple-50 border border-slate-200'
             }`}
           >
             Todas ({clients.length})
@@ -121,10 +120,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               <button
                 key={tag}
                 onClick={() => setSelectedTag(isSelected ? null : tag)}
-                className={`px-2.5 py-1 rounded-xl text-xs font-medium shrink-0 transition ${
+                className={`px-2.5 py-1 rounded-xl text-xs font-semibold shrink-0 transition ${
                   isSelected
-                    ? 'bg-rose-500 text-white font-semibold'
-                    : 'bg-white text-slate-600 hover:bg-rose-50 border border-rose-100'
+                    ? 'bg-zinc-900 text-white'
+                    : 'bg-white text-slate-600 hover:bg-purple-50 border border-slate-200'
                 }`}
               >
                 #{tag} ({count})
@@ -136,24 +135,24 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
       {/* Clients List or Empty State */}
       {clients.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-rose-100 p-8 sm:p-12 text-center max-w-md mx-auto my-6 shadow-xs">
-          <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-500 flex items-center justify-center mx-auto mb-4">
+        <div className="bg-white rounded-3xl border border-purple-100 p-8 sm:p-12 text-center max-w-md mx-auto my-6 shadow-2xs">
+          <div className="w-16 h-16 rounded-2xl bg-purple-50 border border-purple-200/80 text-purple-600 flex items-center justify-center mx-auto mb-4">
             <Users className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-slate-800 mb-1">No hay clientes todavía</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-1">No hay clientes todavía</h3>
           <p className="text-sm text-slate-500 mb-6 leading-relaxed">
             Guarda a las personas que te compran bisutería y pendientes para tener su dirección y datos a mano sin rebuscar en chats.
           </p>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-sm shadow-xs transition active:scale-95"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-sm shadow-xs transition active:scale-95"
           >
-            <UserPlus className="w-4 h-4" />
+            <UserPlus className="w-4 h-4 text-purple-300" />
             <span>Crear primer cliente</span>
           </button>
         </div>
       ) : filteredClients.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-rose-100 p-8 text-center text-slate-500 text-sm">
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-sm">
           No se encontraron clientes con el filtro "{searchTerm}".
           <div className="mt-3">
             <button
@@ -161,7 +160,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 setSearchTerm('');
                 setSelectedTag(null);
               }}
-              className="text-xs text-rose-600 font-semibold hover:underline"
+              className="text-xs text-purple-700 font-semibold hover:underline"
             >
               Limpiar búsqueda
             </button>

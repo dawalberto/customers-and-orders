@@ -50,7 +50,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-full overflow-hidden">
       {label && (
         <span className="block text-xs font-semibold text-slate-700 mb-1.5">
           {label}
@@ -75,8 +75,8 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       />
 
       {value ? (
-        <div className="relative group rounded-xl overflow-hidden border border-rose-200 bg-rose-50/50 shadow-xs">
-          <div className={aspectRatio === 'square' ? 'aspect-square max-h-56 mx-auto' : 'aspect-video max-h-48'}>
+        <div className="relative group rounded-2xl overflow-hidden border border-purple-200 bg-purple-50/30 shadow-2xs">
+          <div className={aspectRatio === 'square' ? 'aspect-square max-h-52 mx-auto' : 'aspect-video max-h-44'}>
             <img
               src={value}
               alt="Foto subida"
@@ -85,24 +85,24 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           </div>
 
           {/* Action buttons overlay */}
-          <div className="p-2 bg-white/90 backdrop-blur-xs border-t border-rose-100 flex items-center justify-between gap-2">
+          <div className="p-2 bg-white/95 backdrop-blur-xs border-t border-purple-100 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
                 disabled={compressing}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-rose-50 hover:bg-rose-100 transition active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-purple-50 hover:bg-purple-100 transition active:scale-95 disabled:opacity-50"
               >
-                <Camera className="w-3.5 h-3.5 text-rose-600" />
+                <Camera className="w-3.5 h-3.5 text-purple-600" />
                 <span>Cámara</span>
               </button>
               <button
                 type="button"
                 onClick={() => galleryInputRef.current?.click()}
                 disabled={compressing}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-rose-50 hover:bg-rose-100 transition active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-purple-50 hover:bg-purple-100 transition active:scale-95 disabled:opacity-50"
               >
-                <ImageIcon className="w-3.5 h-3.5 text-rose-600" />
+                <ImageIcon className="w-3.5 h-3.5 text-purple-600" />
                 <span>Galería</span>
               </button>
             </div>
@@ -120,9 +120,9 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border-2 border-dashed border-rose-200 hover:border-rose-300 bg-rose-50/30 p-4 transition-colors">
+        <div className="rounded-2xl border-2 border-dashed border-purple-200 hover:border-purple-300 bg-purple-50/20 p-4 transition-colors">
           {compressing ? (
-            <div className="flex flex-col items-center justify-center py-4 text-rose-600">
+            <div className="flex flex-col items-center justify-center py-4 text-purple-600">
               <Loader2 className="w-6 h-6 animate-spin mb-2" />
               <span className="text-xs font-medium">Comprimiendo imagen...</span>
             </div>
@@ -131,21 +131,21 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
               <p className="text-xs text-slate-500 mb-3">
                 Haz una foto de los pendientes o elije de tu galería
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <button
                   type="button"
                   onClick={() => cameraInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-rose-500 hover:bg-rose-600 text-white shadow-xs transition active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-white shadow-2xs transition active:scale-95"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-4 h-4 text-purple-300" />
                   <span>Hacer foto</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => galleryInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-white hover:bg-rose-50 text-slate-700 border border-rose-200 shadow-xs transition active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-purple-50 text-slate-800 border border-purple-200 shadow-2xs transition active:scale-95"
                 >
-                  <ImageIcon className="w-4 h-4 text-rose-500" />
+                  <ImageIcon className="w-4 h-4 text-purple-600" />
                   <span>Subir archivo</span>
                 </button>
               </div>

@@ -31,11 +31,10 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
   const currentYear = new Date().getFullYear();
   const currentMonthIdx = new Date().getMonth();
 
-  // Selected months to compare
   const [compareMonthA, setCompareMonthA] = useState<number>(Math.max(0, currentMonthIdx - 1));
   const [compareMonthB, setCompareMonthB] = useState<number>(currentMonthIdx);
 
-  // 1. New clients in the last 12 months
+  // 1. New clients in the year
   const newClientsMonthly = useMemo(() => {
     const counts = Array(12).fill(0);
     clients.forEach((c) => {
@@ -55,7 +54,7 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
     }));
   }, [clients, currentYear]);
 
-  // 2. Orders and Revenue comparison per month across current year
+  // 2. Orders and Revenue per month
   const monthlyRevenueAndOrders = useMemo(() => {
     const data = MONTH_NAMES.map((name) => ({
       mes: name,
@@ -79,7 +78,6 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
     return data;
   }, [orders, currentYear]);
 
-  // Month A vs Month B comparison stats
   const comparisonData = useMemo(() => {
     const monthAData = monthlyRevenueAndOrders[compareMonthA];
     const monthBData = monthlyRevenueAndOrders[compareMonthB];
@@ -107,14 +105,14 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
 
     return [
       { name: '⏳ Pendientes', value: counts.pendiente, color: '#f59e0b' },
-      { name: '📦 Listos', value: counts.listo, color: '#0284c7' },
+      { name: '📦 Listos', value: counts.listo, color: '#7c3aed' },
       { name: '✅ Enviados', value: counts.enviado, color: '#10b981' },
     ];
   }, [orders]);
 
-  // 4. Shipping type distribution
+  // 4. Shipping type distribution (Ordinario, Certificado, En mano)
   const shippingDistribution = useMemo(() => {
-    const counts: Record<string, number> = { Ordinario: 0, Certificado: 0 };
+    const counts: Record<string, number> = { Ordinario: 0, Certificado: 0, 'En mano': 0 };
     orders.forEach((o) => {
       if (o.shippingType && counts[o.shippingType] !== undefined) {
         counts[o.shippingType]++;
@@ -122,8 +120,9 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
     });
 
     return [
-      { name: 'Ordinario', value: counts.Ordinario || 0, color: '#f472b6' },
-      { name: 'Certificado', value: counts.Certificado || 0, color: '#db2777' },
+      { name: 'Ordinario', value: counts.Ordinario || 0, color: '#c084fc' },
+      { name: 'Certificado', value: counts.Certificado || 0, color: '#7e22ce' },
+      { name: 'En mano', value: counts['En mano'] || 0, color: '#18181b' },
     ];
   }, [orders]);
 
@@ -146,12 +145,12 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
   }, [orders, clients]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       {/* 1. Comparison between months */}
-      <div className="bg-white rounded-3xl border border-rose-100 p-5 shadow-xs">
+      <div className="bg-white rounded-3xl border border-purple-100 p-4 sm:p-5 shadow-2xs">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h4 className="font-bold text-slate-800 text-sm sm:text-base">
+            <h4 className="font-bold text-slate-900 text-sm sm:text-base">
               Comparativa de Facturación y Pedidos entre Meses
             </h4>
             <p className="text-xs text-slate-500">
@@ -163,7 +162,7 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
             <select
               value={compareMonthA}
               onChange={(e) => setCompareMonthA(Number(e.target.value))}
-              className="px-2.5 py-1.5 rounded-xl border border-rose-200 text-xs font-semibold text-rose-800 bg-rose-50/50 outline-none"
+              className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-purple-950 bg-purple-50/50 outline-none"
             >
               {MONTH_NAMES.map((m, idx) => (
                 <option key={idx} value={idx}>{m} {currentYear}</option>
@@ -173,7 +172,7 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
             <select
               value={compareMonthB}
               onChange={(e) => setCompareMonthB(Number(e.target.value))}
-              className="px-2.5 py-1.5 rounded-xl border border-rose-200 text-xs font-semibold text-rose-800 bg-rose-50/50 outline-none"
+              className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-purple-950 bg-purple-50/50 outline-none"
             >
               {MONTH_NAMES.map((m, idx) => (
                 <option key={idx} value={idx}>{m} {currentYear}</option>
@@ -182,50 +181,50 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
           </div>
         </div>
 
-        {/* 2 Comparison Cards & Chart */}
+        {/* 2 Comparison Cards */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {comparisonData.map((data, idx) => (
             <div
               key={idx}
-              className="p-3.5 rounded-2xl bg-gradient-to-br from-rose-50/50 to-pink-50/30 border border-rose-100"
+              className="p-3.5 rounded-2xl bg-purple-50/40 border border-purple-100"
             >
-              <div className="flex items-center justify-between text-xs font-bold text-rose-900 mb-1">
+              <div className="flex items-center justify-between text-xs font-bold text-purple-950 mb-1">
                 <span>{data.nombre} {currentYear}</span>
-                <span className="px-2 py-0.5 rounded-md bg-white text-rose-700 text-[11px] shadow-2xs">
+                <span className="px-2 py-0.5 rounded-md bg-white text-purple-800 text-[11px] shadow-2xs">
                   {data.pedidos} {data.pedidos === 1 ? 'pedido' : 'pedidos'}
                 </span>
               </div>
-              <div className="text-lg sm:text-xl font-extrabold text-slate-900">
+              <div className="text-lg sm:text-xl font-extrabold text-slate-950">
                 {formatCurrency(data.ingresos)}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Annual Monthly Evolution Line Chart */}
+        {/* Annual Monthly Evolution Bar Chart */}
         <div className="h-60 w-full mt-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyRevenueAndOrders} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffe4e6" />
-              <XAxis dataKey="mes" tickLine={false} axisLine={{ stroke: '#fbcfe8' }} tick={{ fontSize: 11, fill: '#64748b' }} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ede9fe" />
+              <XAxis dataKey="mes" tickLine={false} axisLine={{ stroke: '#ddd6fe' }} tick={{ fontSize: 11, fill: '#64748b' }} />
               <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
               <Tooltip
                 formatter={(value: any, name: any) => [
                   name === 'ingresos' ? formatCurrency(Number(value)) : `${value} pedidos`,
                   name === 'ingresos' ? 'Facturación' : 'Total Pedidos',
                 ]}
-                contentStyle={{ borderRadius: 12, border: '1px solid #fecdd3', fontSize: 12 }}
+                contentStyle={{ borderRadius: 12, border: '1px solid #ddd6fe', fontSize: 12 }}
               />
-              <Bar yAxisId="left" dataKey="ingresos" name="ingresos" fill="#f43f5e" radius={[6, 6, 0, 0]} />
+              <Bar yAxisId="left" dataKey="ingresos" name="ingresos" fill="#7c3aed" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* 2. New Clients in the Last Year */}
-      <div className="bg-white rounded-3xl border border-rose-100 p-5 shadow-xs">
+      <div className="bg-white rounded-3xl border border-purple-100 p-4 sm:p-5 shadow-2xs">
         <div className="mb-4">
-          <h4 className="font-bold text-slate-800 text-sm sm:text-base">
+          <h4 className="font-bold text-slate-900 text-sm sm:text-base">
             Clientes Nuevos en el Año ({currentYear})
           </h4>
           <p className="text-xs text-slate-500">
@@ -236,19 +235,19 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
         <div className="h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={newClientsMonthly} margin={{ top: 10, right: 15, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffe4e6" />
-              <XAxis dataKey="mes" tickLine={false} axisLine={{ stroke: '#fbcfe8' }} tick={{ fontSize: 11, fill: '#64748b' }} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ede9fe" />
+              <XAxis dataKey="mes" tickLine={false} axisLine={{ stroke: '#ddd6fe' }} tick={{ fontSize: 11, fill: '#64748b' }} />
               <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
               <Tooltip
                 formatter={(val: any) => [`${val} nuevos clientes`, 'Nuevos Clientes']}
-                contentStyle={{ borderRadius: 12, border: '1px solid #fecdd3', fontSize: 12 }}
+                contentStyle={{ borderRadius: 12, border: '1px solid #ddd6fe', fontSize: 12 }}
               />
               <Line
                 type="monotone"
                 dataKey="clientes"
-                stroke="#db2777"
+                stroke="#18181b"
                 strokeWidth={3}
-                dot={{ fill: '#db2777', r: 4 }}
+                dot={{ fill: '#7c3aed', r: 4 }}
                 activeDot={{ r: 6 }}
               />
             </LineChart>
@@ -259,9 +258,9 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
       {/* 3. Distribution Graphs: Order Status & Shipping Types */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Status Distribution */}
-        <div className="bg-white rounded-3xl border border-rose-100 p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white rounded-3xl border border-purple-100 p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
           <div>
-            <h4 className="font-bold text-slate-800 text-sm sm:text-base">
+            <h4 className="font-bold text-slate-900 text-sm sm:text-base">
               Distribución por Estado
             </h4>
             <p className="text-xs text-slate-500 mb-3">
@@ -290,7 +289,7 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
                   </Pie>
                   <Tooltip
                     formatter={(v: any, name: any) => [`${v} pedidos`, name]}
-                    contentStyle={{ borderRadius: 12, border: '1px solid #fecdd3', fontSize: 12 }}
+                    contentStyle={{ borderRadius: 12, border: '1px solid #ddd6fe', fontSize: 12 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
@@ -299,14 +298,14 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
           </div>
         </div>
 
-        {/* Shipping Type Distribution */}
-        <div className="bg-white rounded-3xl border border-rose-100 p-5 shadow-xs flex flex-col justify-between">
+        {/* Shipping Type Distribution (Includes En mano) */}
+        <div className="bg-white rounded-3xl border border-purple-100 p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
           <div>
-            <h4 className="font-bold text-slate-800 text-sm sm:text-base">
+            <h4 className="font-bold text-slate-900 text-sm sm:text-base">
               Tipos de Envío
             </h4>
             <p className="text-xs text-slate-500 mb-3">
-              Comparación entre correo Ordinario y Certificado
+              Ordinario, Certificado y En mano
             </p>
           </div>
 
@@ -331,7 +330,7 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
                   </Pie>
                   <Tooltip
                     formatter={(v: any, name: any) => [`${v} envíos`, name]}
-                    contentStyle={{ borderRadius: 12, border: '1px solid #fecdd3', fontSize: 12 }}
+                    contentStyle={{ borderRadius: 12, border: '1px solid #ddd6fe', fontSize: 12 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
@@ -343,8 +342,8 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
 
       {/* 4. Top 5 Clients Leaderboard */}
       {topClients.length > 0 && (
-        <div className="bg-white rounded-3xl border border-rose-100 p-5 shadow-xs">
-          <h4 className="font-bold text-slate-800 text-sm sm:text-base mb-1">
+        <div className="bg-white rounded-3xl border border-purple-100 p-4 sm:p-5 shadow-2xs">
+          <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1">
             Top Clientes por Facturación
           </h4>
           <p className="text-xs text-slate-500 mb-4">
@@ -355,14 +354,14 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
             {topClients.map((client, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-3 rounded-2xl bg-rose-50/40 border border-rose-100/70"
+                className="flex items-center justify-between p-3 rounded-2xl bg-purple-50/40 border border-purple-100"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="w-6 h-6 rounded-full bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center shrink-0">
+                  <span className="w-6 h-6 rounded-full bg-zinc-900 text-white font-bold text-xs flex items-center justify-center shrink-0">
                     {idx + 1}
                   </span>
                   <div className="min-w-0">
-                    <p className="font-bold text-slate-800 text-xs sm:text-sm truncate">
+                    <p className="font-bold text-slate-900 text-xs sm:text-sm truncate">
                       {client.name}
                     </p>
                     <p className="text-[11px] text-slate-500">
@@ -370,7 +369,7 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
                     </p>
                   </div>
                 </div>
-                <div className="font-extrabold text-slate-900 text-sm shrink-0">
+                <div className="font-extrabold text-slate-950 text-sm shrink-0">
                   {formatCurrency(client.total)}
                 </div>
               </div>

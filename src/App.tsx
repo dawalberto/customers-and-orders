@@ -6,10 +6,8 @@ import {
   Plus, 
   Database, 
   Sparkles,
-  ShoppingBag,
   UserPlus,
-  PackagePlus,
-  ArrowRight
+  PackagePlus
 } from 'lucide-react';
 import { Client, Order, ActiveTab } from './types';
 import { 
@@ -43,7 +41,7 @@ export default function App() {
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [quickNewDropdownOpen, setQuickNewDropdownOpen] = useState(false);
 
-  // Load data & handle URL hash routing (e.g. #/data or /data)
+  // Load data & handle URL hash routing
   useEffect(() => {
     const loadData = () => {
       setClients(getClients());
@@ -52,7 +50,6 @@ export default function App() {
 
     loadData();
 
-    // Check if initial URL points to /data or #/data
     const checkRoute = () => {
       const path = window.location.pathname;
       const hash = window.location.hash;
@@ -69,7 +66,6 @@ export default function App() {
 
     checkRoute();
 
-    // Listen to reactive storage events
     window.addEventListener(STORAGE_CHANGE_EVENT, loadData);
     window.addEventListener('storage', loadData);
     window.addEventListener('hashchange', checkRoute);
@@ -93,13 +89,11 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Navigate to orders with client filter
   const handleNavigateToClientOrders = (clientId: string) => {
     setFilterClientIdForOrders(clientId);
     navigateToTab('orders');
   };
 
-  // Save / Delete Client Handlers
   const handleSaveClient = (clientData: Partial<Client> & { name: string }) => {
     return saveClient(clientData);
   };
@@ -108,7 +102,6 @@ export default function App() {
     deleteClient(clientId);
   };
 
-  // Save / Delete Order Handlers
   const handleSaveOrder = (orderData: Partial<Order> & { clientId: string; price: number; shippingType: Order['shippingType']; orderDate: string }) => {
     saveOrder(orderData);
   };
@@ -117,51 +110,49 @@ export default function App() {
     deleteOrder(orderId);
   };
 
-  // Quick Client creation helper (used when inside Order modal)
   const handleQuickCreateClient = (clientData: Partial<Client> & { name: string }): Client => {
     return saveClient(clientData);
   };
 
-  // Count pending orders for badge in navigation
   const pendingOrdersCount = orders.filter((o) => o.status === 'pendiente').length;
 
   return (
-    <div className="min-h-screen bg-rose-50/40 text-slate-800 flex flex-col font-sans pb-24 md:pb-12">
+    <div className="min-h-screen bg-purple-50/20 text-slate-900 flex flex-col font-sans pb-24 md:pb-12 overflow-x-hidden">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-rose-100 shadow-2xs">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-purple-100 shadow-2xs">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
           {/* Brand Logo & Name */}
           <div
             onClick={() => navigateToTab('orders')}
-            className="flex items-center gap-2.5 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group select-none"
           >
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-pink-400 via-rose-400 to-pink-300 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-purple-300 shadow-2xs group-hover:scale-105 transition">
+              <Sparkles className="w-4 h-4 text-purple-400" />
             </div>
             <div>
-              <span className="font-black text-slate-800 text-base tracking-tight block leading-tight">
+              <span className="font-black text-slate-950 text-base tracking-tight block leading-tight">
                 MIS PEDIDOS
               </span>
-              <span className="text-[10px] font-semibold text-rose-500 tracking-wide uppercase block">
+              <span className="text-[10px] font-semibold text-purple-600 tracking-wider uppercase block">
                 Pendientes & Bisutería
               </span>
             </div>
           </div>
 
           {/* Desktop Nav Items */}
-          <nav className="hidden md:flex items-center gap-1 bg-rose-50/60 p-1 rounded-2xl border border-rose-100/70">
+          <nav className="hidden md:flex items-center gap-1 bg-purple-50/50 p-1 rounded-2xl border border-purple-100">
             <button
               onClick={() => navigateToTab('orders')}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
                 activeTab === 'orders'
-                  ? 'bg-white text-rose-800 shadow-xs'
-                  : 'text-slate-600 hover:text-rose-700'
+                  ? 'bg-zinc-900 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-purple-700'
               }`}
             >
               <Package className="w-4 h-4" />
               <span>Pedidos</span>
               {pendingOrdersCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-extrabold">
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-black">
                   {pendingOrdersCount}
                 </span>
               )}
@@ -170,8 +161,8 @@ export default function App() {
               onClick={() => navigateToTab('clients')}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
                 activeTab === 'clients'
-                  ? 'bg-white text-rose-800 shadow-xs'
-                  : 'text-slate-600 hover:text-rose-700'
+                  ? 'bg-zinc-900 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-purple-700'
               }`}
             >
               <Users className="w-4 h-4" />
@@ -186,8 +177,8 @@ export default function App() {
               onClick={() => navigateToTab('dashboard')}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
                 activeTab === 'dashboard'
-                  ? 'bg-white text-rose-800 shadow-xs'
-                  : 'text-slate-600 hover:text-rose-700'
+                  ? 'bg-zinc-900 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-purple-700'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
@@ -195,7 +186,7 @@ export default function App() {
             </button>
           </nav>
 
-          {/* Right Header Controls: PWA install button, Quick + Menu, Hidden /data link */}
+          {/* Right Header Controls: PWA install, Quick + Menu, /data icon */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <PWAInstallButton />
 
@@ -203,30 +194,30 @@ export default function App() {
             <div className="relative">
               <button
                 onClick={() => setQuickNewDropdownOpen(!quickNewDropdownOpen)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-2xs transition active:scale-95"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-zinc-900 hover:bg-zinc-800 text-white shadow-2xs transition active:scale-95"
                 title="Crear nuevo..."
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3.5 h-3.5 text-purple-300" />
                 <span className="hidden sm:inline">Nuevo</span>
               </button>
 
               {quickNewDropdownOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-rose-100 p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100"
+                  className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-purple-100 p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100"
                   onClick={() => setQuickNewDropdownOpen(false)}
                 >
                   <button
                     onClick={() => setIsNewOrderModalOpen(true)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-900 rounded-xl transition text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-purple-50 hover:text-purple-900 rounded-xl transition text-left"
                   >
-                    <PackagePlus className="w-4 h-4 text-rose-500" />
+                    <PackagePlus className="w-4 h-4 text-purple-600" />
                     <span>Nuevo Pedido</span>
                   </button>
                   <button
                     onClick={() => setIsNewClientModalOpen(true)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-900 rounded-xl transition text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-purple-50 hover:text-purple-900 rounded-xl transition text-left"
                   >
-                    <UserPlus className="w-4 h-4 text-rose-500" />
+                    <UserPlus className="w-4 h-4 text-purple-600" />
                     <span>Nuevo Cliente</span>
                   </button>
                 </div>
@@ -238,8 +229,8 @@ export default function App() {
               onClick={() => navigateToTab('data')}
               className={`p-2 rounded-xl transition ${
                 activeTab === 'data'
-                  ? 'bg-rose-100 text-rose-700'
-                  : 'text-slate-400 hover:text-slate-700 hover:bg-rose-50'
+                  ? 'bg-purple-100 text-purple-800'
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-purple-50'
               }`}
               title="Copias de seguridad / Datos (/data)"
             >
@@ -250,7 +241,7 @@ export default function App() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-3.5 sm:px-6 pt-4 pb-8">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3.5 sm:px-6 pt-4 pb-8 overflow-x-hidden">
         {activeTab === 'clients' && (
           <ClientsView
             clients={clients}
@@ -299,53 +290,53 @@ export default function App() {
         )}
       </main>
 
-      {/* Bottom Navigation Bar for Mobile (Smartphones) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-rose-100 shadow-lg px-2 py-3">
-        <div className="flex items-center justify-around max-w-md mx-auto">
-          {/* Pedidos */}
+      {/* Bottom Navigation Bar for Mobile: Generous touch targets spanning the full column */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-purple-100/90 shadow-lg px-2 py-1">
+        <div className="flex items-stretch justify-around max-w-md mx-auto h-14">
+          {/* Pedidos Tab Button */}
           <button
             onClick={() => navigateToTab('orders')}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition relative ${
+            className={`flex-1 flex flex-col items-center justify-center rounded-2xl transition active:scale-95 ${
               activeTab === 'orders'
-                ? 'text-rose-600 font-bold'
-                : 'text-slate-500 hover:text-rose-500'
+                ? 'bg-purple-100/70 text-purple-900 font-bold'
+                : 'text-slate-600 hover:text-purple-700'
             }`}
           >
             <div className="relative">
               <Package className="w-5 h-5" />
               {pendingOrdersCount > 0 && (
-                <span className="absolute -top-1 -right-2.5 px-1.5 py-0.2 rounded-full text-[9px] bg-amber-500 text-white font-extrabold shadow-2xs">
+                <span className="absolute -top-1.5 -right-3 px-1.5 py-0.2 rounded-full text-[9px] bg-amber-500 text-white font-black shadow-2xs">
                   {pendingOrdersCount}
                 </span>
               )}
             </div>
-            <span className="text-[11px] mt-0.5">Pedidos</span>
+            <span className="text-[11px] mt-0.5 leading-none">Pedidos</span>
           </button>
 
-          {/* Clientes */}
+          {/* Clientes Tab Button */}
           <button
             onClick={() => navigateToTab('clients')}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition ${
+            className={`flex-1 flex flex-col items-center justify-center rounded-2xl transition active:scale-95 ${
               activeTab === 'clients'
-                ? 'text-rose-600 font-bold'
-                : 'text-slate-500 hover:text-rose-500'
+                ? 'bg-purple-100/70 text-purple-900 font-bold'
+                : 'text-slate-600 hover:text-purple-700'
             }`}
           >
             <Users className="w-5 h-5" />
-            <span className="text-[11px] mt-0.5">Clientes</span>
+            <span className="text-[11px] mt-0.5 leading-none">Clientes</span>
           </button>
 
-          {/* Análisis */}
+          {/* Análisis Tab Button */}
           <button
             onClick={() => navigateToTab('dashboard')}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition ${
+            className={`flex-1 flex flex-col items-center justify-center rounded-2xl transition active:scale-95 ${
               activeTab === 'dashboard'
-                ? 'text-rose-600 font-bold'
-                : 'text-slate-500 hover:text-rose-500'
+                ? 'bg-purple-100/70 text-purple-900 font-bold'
+                : 'text-slate-600 hover:text-purple-700'
             }`}
           >
             <BarChart3 className="w-5 h-5" />
-            <span className="text-[11px] mt-0.5">Análisis</span>
+            <span className="text-[11px] mt-0.5 leading-none">Análisis</span>
           </button>
         </div>
       </nav>

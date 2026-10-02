@@ -14,10 +14,10 @@ export const PWAInstallButton: React.FC = () => {
     return (
       <button
         onClick={install}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-sm transition active:scale-95"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-white shadow-2xs transition active:scale-95"
         title="Instalar como App en tu móvil o PC"
       >
-        <Download className="w-3.5 h-3.5" />
+        <Download className="w-3.5 h-3.5 text-purple-300" />
         <span>Instalar App</span>
       </button>
     );
@@ -28,22 +28,22 @@ export const PWAInstallButton: React.FC = () => {
       <>
         <button
           onClick={() => setShowIOSGuide(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-100 hover:bg-rose-200 text-rose-800 transition active:scale-95"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-100 hover:bg-purple-200 text-purple-900 transition active:scale-95"
           title="Instalar en iPhone"
         >
-          <Download className="w-3.5 h-3.5 text-rose-600" />
+          <Download className="w-3.5 h-3.5 text-purple-700" />
           <span>Instalar en iOS</span>
         </button>
 
         {showIOSGuide && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl border border-rose-100 animate-in fade-in slide-in-from-bottom duration-200">
-              <div className="flex items-center justify-between pb-3 border-b border-rose-100">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+            <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl border border-purple-100 animate-in fade-in slide-in-from-bottom duration-200">
+              <div className="flex items-center justify-between pb-3 border-b border-purple-100">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600 font-bold">
-                    🌸
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700 font-bold">
+                    💜
                   </div>
-                  <h3 className="text-base font-bold text-slate-800">Instalar Mis Pedidos</h3>
+                  <h3 className="text-base font-bold text-slate-900">Instalar Mis Pedidos</h3>
                 </div>
                 <button
                   onClick={() => setShowIOSGuide(false)}
@@ -55,34 +55,34 @@ export const PWAInstallButton: React.FC = () => {
 
               <div className="mt-4 space-y-3 text-sm text-slate-600">
                 <div className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-bold">
                     1
                   </span>
                   <p>
-                    Pulsa el icono de <strong className="text-slate-800">Compartir</strong> <Share className="inline w-4 h-4 text-sky-600 align-text-bottom mx-0.5" /> en la barra inferior de Safari.
+                    Pulsa el icono de <strong className="text-slate-900">Compartir</strong> <Share className="inline w-4 h-4 text-purple-600 align-text-bottom mx-0.5" /> en la barra inferior de Safari.
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-bold">
                     2
                   </span>
                   <p>
-                    Baja un poco en el menú y toca en <strong className="text-slate-800">Añadir a pantalla de inicio</strong> (+).
+                    Baja un poco en el menú y toca en <strong className="text-slate-900">Añadir a pantalla de inicio</strong> (+).
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-bold">
                     3
                   </span>
                   <p>
-                    Toca en <strong className="text-slate-800">Añadir</strong> arriba a la derecha. ¡Y listo! Se abrirá como app independiente sin barras de navegador.
+                    Toca en <strong className="text-slate-900">Añadir</strong> arriba a la derecha. ¡Y listo! Se abrirá como app independiente sin barras de navegador.
                   </p>
                 </div>
               </div>
 
               <button
                 onClick={() => setShowIOSGuide(false)}
-                className="mt-5 w-full py-2.5 px-4 rounded-xl bg-rose-500 text-white font-medium hover:bg-rose-600 transition"
+                className="mt-5 w-full py-2.5 px-4 rounded-2xl bg-zinc-900 text-white font-medium hover:bg-zinc-800 transition"
               >
                 Entendido
               </button>

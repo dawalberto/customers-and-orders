@@ -13,10 +13,9 @@ import {
   Trash2, 
   Check, 
   X, 
-  ExternalLink,
-  MessageCircle,
-  Copy,
-  Plus
+  MessageCircle, 
+  Copy, 
+  Plus 
 } from 'lucide-react';
 import { Client, Order } from '../../types';
 import { formatDateSpanish, formatCurrency, getTodayDateString } from '../../utils/dateUtils';
@@ -66,8 +65,7 @@ export const ClientCard: React.FC<ClientCardProps> = ({
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
-  // Start of current week (Monday)
-  const dayOfWeek = (now.getDay() + 6) % 7; // 0 is Monday
+  const dayOfWeek = (now.getDay() + 6) % 7;
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - dayOfWeek);
   startOfWeek.setHours(0, 0, 0, 0);
@@ -89,7 +87,7 @@ export const ClientCard: React.FC<ClientCardProps> = ({
         spentMonth += val;
       }
     } catch {
-      // ignore date parse issues
+      // ignore
     }
   });
 
@@ -145,43 +143,33 @@ export const ClientCard: React.FC<ClientCardProps> = ({
     setTimeout(() => setCopySuccess(false), 2000);
   };
 
-  // Clean WhatsApp number format
   const cleanPhone = client.phone ? client.phone.replace(/\D/g, '') : '';
   const waUrl = cleanPhone ? `https://wa.me/${cleanPhone.startsWith('34') || cleanPhone.length > 9 ? cleanPhone : '34' + cleanPhone}` : null;
 
   if (isEditing) {
     return (
-      <form onSubmit={handleSave} className="bg-white rounded-2xl border border-rose-200 shadow-sm p-4 sm:p-5 transition">
-        <div className="flex items-center justify-between pb-3 mb-3 border-b border-rose-100">
-          <span className="text-sm font-bold text-rose-900 flex items-center gap-1.5">
-            <Edit3 className="w-4 h-4 text-rose-500" />
+      <form onSubmit={handleSave} className="bg-white rounded-3xl border border-purple-200 shadow-sm p-4 sm:p-5 transition overflow-x-hidden">
+        {/* Header - Simple title without save buttons */}
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-purple-100">
+          <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+            <Edit3 className="w-4 h-4 text-purple-600" />
             Editar Cliente
           </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="p-1.5 text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition"
-              title="Cancelar"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <button
-              type="submit"
-              disabled={!name.trim()}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-xs transition disabled:opacity-50"
-            >
-              <Check className="w-4 h-4" />
-              Guardar
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+            title="Cerrar edición"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        <div className="space-y-3.5">
+        <div className="space-y-3.5 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Nombre <span className="text-rose-500">*</span>
+            <div className="min-w-0">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Nombre <span className="text-purple-600">*</span>
               </label>
               <input
                 type="text"
@@ -189,67 +177,67 @@ export const ClientCard: React.FC<ClientCardProps> = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nombre del cliente"
-                className="w-full px-3 py-2 rounded-xl border border-rose-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none text-sm transition"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm transition"
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Apellidos</label>
+            <div className="min-w-0">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Apellidos</label>
               <input
                 type="text"
                 value={surnames}
                 onChange={(e) => setSurnames(e.target.value)}
                 placeholder="Apellidos"
-                className="w-full px-3 py-2 rounded-xl border border-rose-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none text-sm transition"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm transition"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Teléfono</label>
+            <div className="min-w-0">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Teléfono</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Ej. 612 34 56 78"
-                className="w-full px-3 py-2 rounded-xl border border-rose-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none text-sm transition"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm transition"
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">DNI / NIF</label>
+            <div className="min-w-0">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">DNI / NIF</label>
               <input
                 type="text"
                 value={dni}
                 onChange={(e) => setDni(e.target.value)}
                 placeholder="12345678X"
-                className="w-full px-3 py-2 rounded-xl border border-rose-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none text-sm transition"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm transition"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Dirección de entrega</label>
+          <div className="min-w-0">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Dirección de entrega</label>
             <textarea
               rows={2}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Calle, número, piso, CP, Ciudad, Provincia"
-              className="w-full px-3 py-2 rounded-xl border border-rose-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none text-sm transition resize-none"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm transition resize-none"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Fecha de cliente</label>
+            <div className="min-w-0">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Fecha de cliente</label>
               <input
                 type="date"
                 value={clientDate}
                 onChange={(e) => setClientDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-rose-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none text-sm transition"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm transition"
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Etiquetas (tags)</label>
+            <div className="min-w-0">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Etiquetas (tags)</label>
               <div className="flex gap-1.5">
                 <input
                   type="text"
@@ -261,29 +249,29 @@ export const ClientCard: React.FC<ClientCardProps> = ({
                       handleAddTag();
                     }
                   }}
-                  placeholder="Ej: Instagram, VIP, Feria"
-                  className="flex-1 px-3 py-2 rounded-xl border border-rose-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none text-sm transition"
+                  placeholder="Instagram, VIP..."
+                  className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm transition"
                 />
                 <button
                   type="button"
                   onClick={handleAddTag}
-                  className="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-medium transition"
+                  className="px-3 py-2 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-semibold transition shrink-0"
                 >
                   +
                 </button>
               </div>
               {tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
+                <div className="flex flex-wrap gap-1 mt-2">
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-rose-100/70 text-rose-800"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-purple-50 text-purple-800 border border-purple-200/50"
                     >
                       #{tag}
                       <button
                         type="button"
                         onClick={() => handleRemoveTag(tag)}
-                        className="hover:text-rose-950 font-bold"
+                        className="hover:text-purple-950 font-bold"
                       >
                         ×
                       </button>
@@ -294,31 +282,48 @@ export const ClientCard: React.FC<ClientCardProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Notas / Observaciones</label>
+          <div className="min-w-0">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Notas / Observaciones</label>
             <textarea
               rows={2}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Preferencias de bisutería, cierres especiales, etc."
-              className="w-full px-3 py-2 rounded-xl border border-rose-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none text-sm transition resize-none"
+              placeholder="Preferencias de bisutería, cierres especiales..."
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm transition resize-none"
             />
           </div>
 
-          <div>
-            <ImageUploader
-              value={photo}
-              onChange={setPhoto}
-              label="Foto del cliente / perfil (opcional)"
-            />
-          </div>
+          <ImageUploader
+            value={photo}
+            onChange={setPhoto}
+            label="Foto del cliente / perfil (opcional)"
+          />
+        </div>
+
+        {/* Footer: Cancelar y Guardar buttons STRICTLY in footer */}
+        <div className="mt-4 pt-3 border-t border-purple-100 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium transition"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={!name.trim()}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-white shadow-2xs transition active:scale-95 disabled:opacity-50"
+          >
+            <Check className="w-4 h-4 text-purple-300" />
+            <span>Guardar Cambios</span>
+          </button>
         </div>
       </form>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-rose-100/80 shadow-xs hover:shadow-md transition-all duration-200 p-4 sm:p-5 flex flex-col justify-between">
+    <div className="bg-white rounded-3xl border border-purple-100/90 shadow-2xs hover:shadow-xs transition-all duration-200 p-4 sm:p-5 flex flex-col justify-between overflow-x-hidden">
       <div>
         {/* Header: Photo/Avatar + Name + Actions */}
         <div className="flex items-start justify-between gap-3">
@@ -327,19 +332,19 @@ export const ClientCard: React.FC<ClientCardProps> = ({
               <img
                 src={client.photo}
                 alt={client.name}
-                className="w-13 h-13 rounded-2xl object-cover border border-rose-200 shadow-2xs shrink-0"
+                className="w-13 h-13 rounded-2xl object-cover border border-purple-200 shadow-2xs shrink-0"
               />
             ) : (
-              <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-pink-100 to-rose-200 border border-rose-200/60 flex items-center justify-center text-rose-700 font-bold text-lg shadow-2xs shrink-0">
+              <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-purple-100 via-purple-50 to-violet-100 border border-purple-200/80 flex items-center justify-center text-purple-800 font-bold text-lg shadow-2xs shrink-0">
                 {client.name.charAt(0).toUpperCase()}
               </div>
             )}
             <div className="min-w-0">
-              <h3 className="font-bold text-slate-800 text-base leading-tight truncate">
+              <h3 className="font-bold text-slate-900 text-base leading-tight truncate">
                 {client.name} {client.surnames}
               </h3>
               <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-rose-400 shrink-0" />
+                <Calendar className="w-3 h-3 text-purple-500 shrink-0" />
                 <span>Desde {formatDateSpanish(client.clientDate)}</span>
               </p>
             </div>
@@ -348,7 +353,7 @@ export const ClientCard: React.FC<ClientCardProps> = ({
           <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={() => setIsEditing(true)}
-              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
+              className="p-1.5 text-slate-400 hover:text-purple-700 rounded-lg hover:bg-purple-50 transition"
               title="Editar cliente"
             >
               <Edit3 className="w-4 h-4" />
@@ -373,7 +378,7 @@ export const ClientCard: React.FC<ClientCardProps> = ({
             {client.tags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/50"
+                className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-800 border border-purple-200/60"
               >
                 #{tag}
               </span>
@@ -384,17 +389,17 @@ export const ClientCard: React.FC<ClientCardProps> = ({
         {/* Details list: Address, Phone, DNI */}
         <div className="mt-3.5 space-y-2 text-xs text-slate-600">
           {client.address ? (
-            <div className="flex items-start gap-2 bg-rose-50/40 p-2.5 rounded-xl border border-rose-100/50">
-              <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2 bg-purple-50/30 p-2.5 rounded-2xl border border-purple-100/60">
+              <MapPin className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-700 whitespace-pre-line leading-relaxed">
+                <p className="font-medium text-slate-800 whitespace-pre-line leading-relaxed">
                   {client.address}
                 </p>
               </div>
               <button
                 onClick={copyAddress}
-                className="text-slate-400 hover:text-rose-600 p-1 rounded-md hover:bg-rose-100/50 transition shrink-0"
-                title="Copiar dirección al portapapeles"
+                className="text-slate-400 hover:text-purple-700 p-1 rounded-md hover:bg-purple-100 transition shrink-0"
+                title="Copiar dirección"
               >
                 {copySuccess ? (
                   <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -409,8 +414,8 @@ export const ClientCard: React.FC<ClientCardProps> = ({
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1">
             {client.phone && (
-              <div className="flex items-center gap-1.5 text-slate-700">
-                <Phone className="w-3.5 h-3.5 text-rose-500" />
+              <div className="flex items-center gap-1.5 text-slate-800">
+                <Phone className="w-3.5 h-3.5 text-purple-600" />
                 <a href={`tel:${client.phone}`} className="hover:underline font-medium">
                   {client.phone}
                 </a>
@@ -438,7 +443,7 @@ export const ClientCard: React.FC<ClientCardProps> = ({
 
           {client.note && (
             <div className="flex items-start gap-1.5 text-slate-500 text-[11px] pt-1">
-              <FileText className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <FileText className="w-3.5 h-3.5 text-purple-500 shrink-0 mt-0.5" />
               <p className="italic">{client.note}</p>
             </div>
           )}
@@ -446,15 +451,15 @@ export const ClientCard: React.FC<ClientCardProps> = ({
       </div>
 
       {/* Footer Metrics & Actions */}
-      <div className="mt-4 pt-3 border-t border-rose-100/70 flex items-center justify-between gap-2">
+      <div className="mt-4 pt-3 border-t border-purple-100/70 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          {/* Orders count button: navigates to orders filtered by client */}
+          {/* Orders count button */}
           <button
             onClick={() => onNavigateToOrders(client.id)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-800 transition active:scale-95"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-900 transition active:scale-95"
             title="Ver los pedidos de este cliente"
           >
-            <ShoppingBag className="w-3.5 h-3.5 text-rose-600" />
+            <ShoppingBag className="w-3.5 h-3.5 text-purple-600" />
             <span>
               {totalOrdersCount} {totalOrdersCount === 1 ? 'pedido' : 'pedidos'}
             </span>
@@ -466,33 +471,33 @@ export const ClientCard: React.FC<ClientCardProps> = ({
               onClick={() => setShowTooltip(!showTooltip)}
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition active:scale-95"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-900 transition active:scale-95"
               title="Pulsar para ver desglose de gasto"
             >
-              <Euro className="w-3.5 h-3.5 text-emerald-600" />
+              <Euro className="w-3.5 h-3.5 text-purple-600" />
               <span>{formatCurrency(spentTotal)}</span>
             </button>
 
             {/* Popover / Tooltip with 3 lines: Esta semana, Este mes, Total */}
             {showTooltip && (
               <div
-                className="absolute bottom-full left-0 mb-2 z-30 w-52 p-3 bg-slate-900 text-white rounded-xl shadow-xl text-xs space-y-1.5 animate-in fade-in zoom-in-95 duration-150"
+                className="absolute bottom-full left-0 mb-2 z-30 w-52 p-3 bg-zinc-950 text-white rounded-2xl shadow-xl text-xs space-y-1.5 animate-in fade-in zoom-in-95 duration-150 border border-zinc-800"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="font-semibold text-rose-300 pb-1 border-b border-slate-700">
+                <div className="font-semibold text-purple-300 pb-1 border-b border-zinc-800">
                   Gasto de {client.name}
                 </div>
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-zinc-300">
                   <span>Esta semana:</span>
                   <span className="font-semibold text-white">{formatCurrency(spentWeek)}</span>
                 </div>
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-zinc-300">
                   <span>Este mes:</span>
                   <span className="font-semibold text-white">{formatCurrency(spentMonth)}</span>
                 </div>
-                <div className="flex justify-between text-slate-200 pt-1 border-t border-slate-800">
+                <div className="flex justify-between text-zinc-200 pt-1 border-t border-zinc-800">
                   <span className="font-bold">Total:</span>
-                  <span className="font-bold text-emerald-400">{formatCurrency(spentTotal)}</span>
+                  <span className="font-bold text-purple-400">{formatCurrency(spentTotal)}</span>
                 </div>
               </div>
             )}
@@ -502,7 +507,7 @@ export const ClientCard: React.FC<ClientCardProps> = ({
         {onCreateOrderForClient && (
           <button
             onClick={() => onCreateOrderForClient(client.id)}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-rose-700 hover:bg-rose-50 transition"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-800 hover:bg-purple-50 transition"
             title="Nuevo pedido para este cliente"
           >
             <Plus className="w-3.5 h-3.5" />

@@ -1,6 +1,8 @@
-export type ShippingType = 'Ordinario' | 'Certificado' | '';
+export type ShippingType = 'Ordinario' | 'Certificado' | 'En mano' | '';
 
 export type OrderStatus = 'pendiente' | 'listo' | 'enviado';
+
+export type OrdersViewMode = 'stack' | 'list';
 
 export interface Client {
   id: string;
