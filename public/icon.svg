@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="pinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbcfe8"/>
+      <stop offset="50%" stop-color="#f472b6"/>
+      <stop offset="100%" stop-color="#db2777"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <radialGradient id="sparkleGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f472b6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Background with rounded squircle -->
+  <rect width="512" height="512" rx="128" fill="#fff5f7"/>
+  
+  <!-- Outer soft glow ring -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#pinkGrad)" stroke-width="12" stroke-dasharray="8 12" opacity="0.4"/>
+  <circle cx="256" cy="256" r="160" fill="#fdf2f8" stroke="#fbcfe8" stroke-width="4"/>
+
+  <!-- Jewelry earring / gem motif -->
+  <!-- Earring hook / loop -->
+  <path d="M 256 120 C 235 120 220 135 220 155 C 220 170 230 182 245 188 L 245 210" fill="none" stroke="url(#goldGrad)" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="256" cy="216" r="10" fill="url(#goldGrad)"/>
+
+  <!-- Drop pendant / gemstone crescent & star -->
+  <path d="M 256 230 C 205 230 165 272 165 325 C 165 378 205 410 256 410 C 285 410 315 398 335 375 C 310 378 275 365 260 338 C 245 310 252 275 275 250 C 269 237 262 230 256 230 Z" fill="url(#pinkGrad)"/>
+  
+  <!-- Golden sparkling star inside -->
+  <path d="M 230 320 Q 230 300 240 290 Q 250 300 250 320 Q 250 340 240 350 Q 230 340 230 320 Z" fill="url(#goldGrad)"/>
+  <circle cx="295" cy="305" r="7" fill="#ffffff"/>
+  <circle cx="315" cy="335" r="5" fill="#fde68a"/>
+</svg>
