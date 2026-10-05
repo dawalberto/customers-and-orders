@@ -10,7 +10,7 @@ import {
   Layers,
   List
 } from 'lucide-react';
-import { Order, Client, OrdersViewMode, OrderPackage } from '../../types';
+import { Order, Client, OrdersViewMode, OrderPackage, ShippingRateConfig } from '../../types';
 import { OrderCard } from './OrderCard';
 import { ClientOrderStack } from './ClientOrderStack';
 import { OrderModal } from './OrderModal';
@@ -27,6 +27,7 @@ interface OrdersViewProps {
   selectedClientId?: string | null;
   onClearClientFilter?: () => void;
   onSelectClient?: (clientId: string) => void;
+  shippingRates?: ShippingRateConfig | null;
 }
 
 export const OrdersView: React.FC<OrdersViewProps> = ({
@@ -38,6 +39,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   selectedClientId,
   onClearClientFilter,
   onSelectClient,
+  shippingRates,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -468,6 +470,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               onAddOrderForClient={handleOpenAddModal}
               onMovePackage={(pkg, order) => setPackageToMove({ pkg, sourceOrder: order })}
               defaultExpanded={clientStacks.length === 1 || stack.hasPending}
+              shippingRates={shippingRates}
             />
           ))}
         </div>
@@ -483,6 +486,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               onDelete={onDeleteOrder}
               onSelectClient={onSelectClient}
               onMovePackage={(pkg, order) => setPackageToMove({ pkg, sourceOrder: order })}
+              shippingRates={shippingRates}
             />
           ))}
         </div>

@@ -16,9 +16,10 @@ import {
   Plus,
   Send,
   Sparkles,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Gift
 } from 'lucide-react';
-import { Order, Client, OrderStatus, ShippingType, OrderPackage } from '../../types';
+import { Order, Client, OrderStatus, ShippingType, OrderPackage, ShippingRateConfig } from '../../types';
 import { formatDateSpanish, formatShortDate, formatCurrency, calculateDaysBetween, getTodayDateString } from '../../utils/dateUtils';
 import { ImageUploader } from '../common/ImageUploader';
 import { OrderPriceDisplay } from '../common/OrderPriceDisplay';
@@ -31,6 +32,7 @@ interface OrderCardProps {
   onSelectClient?: (clientId: string) => void;
   onMovePackage?: (pkg: OrderPackage, order: Order) => void;
   initialExpanded?: boolean;
+  shippingRates?: ShippingRateConfig | null;
 }
 
 export const OrderCard: React.FC<OrderCardProps> = ({
@@ -41,6 +43,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   onSelectClient,
   onMovePackage,
   initialExpanded = false,
+  shippingRates,
 }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [isEditing, setIsEditing] = useState(false);
@@ -237,6 +240,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const daysOrderToShipped = (order.orderDate && order.shippedDate)
     ? calculateDaysBetween(order.orderDate, order.shippedDate)
     : null;
+
+  // REQUIREMENT: Free gift check (total price without shipping fee >= giftThresholdAmount)
+  const hasFreeGift = Boolean(
+    shippingRates?.giftThresholdEnabled &&
+    typeof shippingRates.giftThresholdAmount === 'number' &&
+    (Number(order.price) || 0) >= shippingRates.giftThresholdAmount
+  );
 
   // Edit Mode: Package handlers
   const handleAddEditPackage = () => {
@@ -708,6 +718,15 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                   <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200/60">
                     {totalPackagesCount} {totalPackagesCount === 1 ? 'paquete' : 'paquetes'}
                   </span>
+                  {hasFreeGift && (
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/90 shadow-2xs"
+                      title={`Lleva regalo incluido (importe sin envío ≥ ${formatCurrency(shippingRates?.giftThresholdAmount || 0)})`}
+                    >
+                      <Gift className="w-3 h-3 text-rose-500 shrink-0" />
+                      <span>🎁 Lleva regalo</span>
+                    </span>
+                  )}
                 </div>
 
                 <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
@@ -787,6 +806,19 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       {/* Expanded Detail Mode: SHOWS NESTED PACKAGES (PAQUETES) WITH FULL DESCRIPTIONS */}
       {isExpanded && (
         <div className="px-3.5 pb-4 pt-3 border-t border-purple-100 bg-purple-50/20 space-y-3.5 text-xs text-slate-600 animate-in fade-in duration-150">
+          {/* Free Gift Notification Banner */}
+          {hasFreeGift && (
+            <div className="bg-rose-50/90 border border-rose-200/90 rounded-2xl p-2.5 sm:p-3 flex flex-wrap items-center justify-between gap-2 text-xs text-rose-950 font-medium shadow-2xs animate-in fade-in duration-150">
+              <span className="flex items-center gap-1.5 font-extrabold text-rose-900">
+                <Gift className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>🎁 ¡Este pedido lleva regalo incluido!</span>
+              </span>
+              <span className="text-[11px] text-rose-700 font-bold bg-white/90 px-2 py-0.5 rounded-lg border border-rose-200/80">
+                Total artículos: {formatCurrency(order.price)} (Mínimo: {formatCurrency(shippingRates?.giftThresholdAmount || 0)})
+              </span>
+            </div>
+          )}
+
           {/* Quick status progress buttons: 4 States */}
           <div className="bg-white p-2.5 rounded-2xl border border-purple-100/90 flex flex-wrap items-center justify-between gap-1.5 shadow-2xs">
             <span className="text-[11px] font-semibold text-slate-700 pl-1">

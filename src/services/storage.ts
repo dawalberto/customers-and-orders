@@ -10,6 +10,8 @@ export const DEFAULT_SHIPPING_RATES: ShippingRateConfig = {
   'En mano': 0,
   'Ordinario': 2.50,
   'Certificado': 5.95,
+  giftThresholdEnabled: false,
+  giftThresholdAmount: 30,
 };
 
 interface MisPedidosDBSchema extends DBSchema {
@@ -120,6 +122,8 @@ export async function getShippingRates(): Promise<ShippingRateConfig> {
         'En mano': typeof rates['En mano'] === 'number' ? rates['En mano'] : DEFAULT_SHIPPING_RATES['En mano'],
         'Ordinario': typeof rates['Ordinario'] === 'number' ? rates['Ordinario'] : DEFAULT_SHIPPING_RATES['Ordinario'],
         'Certificado': typeof rates['Certificado'] === 'number' ? rates['Certificado'] : DEFAULT_SHIPPING_RATES['Certificado'],
+        giftThresholdEnabled: typeof rates.giftThresholdEnabled === 'boolean' ? rates.giftThresholdEnabled : false,
+        giftThresholdAmount: typeof rates.giftThresholdAmount === 'number' ? rates.giftThresholdAmount : 30,
       };
     }
     return { ...DEFAULT_SHIPPING_RATES };
@@ -144,8 +148,8 @@ export async function saveShippingRates(
     const orders = await store.getAll();
 
     for (const order of orders) {
-      if (order.shippingType && newRates[order.shippingType as keyof ShippingRateConfig] !== undefined) {
-        const newFee = newRates[order.shippingType as keyof ShippingRateConfig];
+      if (order.shippingType && typeof (newRates as any)[order.shippingType] === 'number') {
+        const newFee: number = (newRates as any)[order.shippingType];
         if (order.shippingCost !== newFee) {
           order.shippingCost = newFee;
           order.updatedAt = new Date().toISOString();
@@ -167,11 +171,11 @@ export async function saveShippingRates(
 export function normalizeOrder(order: any, rates?: ShippingRateConfig): Order {
   const currentRates = rates || DEFAULT_SHIPPING_RATES;
   const shippingType = order.shippingType || '';
-  const defaultFee = shippingType && currentRates[shippingType as keyof ShippingRateConfig] !== undefined
-    ? currentRates[shippingType as keyof ShippingRateConfig]
+  const defaultFee: number = (shippingType && typeof (currentRates as any)[shippingType] === 'number')
+    ? (currentRates as any)[shippingType]
     : 0;
 
-  const shippingCost = typeof order.shippingCost === 'number' ? order.shippingCost : defaultFee;
+  const shippingCost: number = typeof order.shippingCost === 'number' ? order.shippingCost : defaultFee;
 
   let packages: OrderPackage[] = [];
   if (Array.isArray(order.packages) && order.packages.length > 0) {
@@ -351,11 +355,11 @@ export async function saveOrder(
   const now = new Date().toISOString();
   const today = now.split('T')[0];
 
-  const defaultFee = order.shippingType && rates[order.shippingType as keyof ShippingRateConfig] !== undefined
-    ? rates[order.shippingType as keyof ShippingRateConfig]
+  const defaultFee: number = (order.shippingType && typeof (rates as any)[order.shippingType] === 'number')
+    ? (rates as any)[order.shippingType]
     : 0;
 
-  const shippingCost = typeof order.shippingCost === 'number' ? order.shippingCost : defaultFee;
+  const shippingCost: number = typeof order.shippingCost === 'number' ? order.shippingCost : defaultFee;
 
   let packages: OrderPackage[] = [];
   if (Array.isArray(order.packages) && order.packages.length > 0) {

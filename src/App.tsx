@@ -7,7 +7,7 @@ import {
   Boxes,
   Send
 } from 'lucide-react';
-import { Client, Order, ActiveTab, OrderPackage } from './types';
+import { Client, Order, ActiveTab, OrderPackage, ShippingRateConfig } from './types';
 import { 
   getClients, 
   getOrders, 
@@ -15,6 +15,7 @@ import {
   deleteClient, 
   saveOrder, 
   deleteOrder, 
+  getShippingRates,
   STORAGE_CHANGE_EVENT 
 } from './services/storage';
 import { ClientsView } from './components/clients/ClientsView';
@@ -34,6 +35,7 @@ export default function App() {
   // Filter & Navigation states
   const [filterClientIdForOrders, setFilterClientIdForOrders] = useState<string | null>(null);
   const [focusedClientId, setFocusedClientId] = useState<string | null>(null);
+  const [shippingRates, setShippingRates] = useState<ShippingRateConfig | null>(null);
 
   // Modals for creating order for a specific client
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
@@ -42,12 +44,14 @@ export default function App() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [loadedClients, loadedOrders] = await Promise.all([
+        const [loadedClients, loadedOrders, loadedRates] = await Promise.all([
           getClients(),
           getOrders(),
+          getShippingRates(),
         ]);
         setClients(loadedClients);
         setOrders(loadedOrders);
+        setShippingRates(loadedRates);
       } catch (err) {
         console.error('Error loading data from IndexedDB:', err);
       }
@@ -255,6 +259,7 @@ export default function App() {
               setFocusedClientId(cId);
               navigateToTab('clients', false);
             }}
+            shippingRates={shippingRates}
           />
         )}
 

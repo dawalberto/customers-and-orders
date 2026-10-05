@@ -55,8 +55,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   useEffect(() => {
     getShippingRates().then((r) => {
       setRates(r);
-      if (shippingType && r[shippingType as keyof ShippingRateConfig] !== undefined) {
-        setShippingCost(r[shippingType as keyof ShippingRateConfig]);
+      if (shippingType && typeof (r as any)[shippingType] === 'number') {
+        setShippingCost((r as any)[shippingType]);
       }
     });
   }, [shippingType]);
@@ -91,8 +91,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   const handleShippingTypeChange = (newType: ShippingType) => {
     setShippingType(newType);
-    if (rates && newType && rates[newType as keyof ShippingRateConfig] !== undefined) {
-      setShippingCost(rates[newType as keyof ShippingRateConfig]);
+    if (rates && newType && typeof (rates as any)[newType] === 'number') {
+      setShippingCost((rates as any)[newType]);
     }
     // Also update packages shippingType if they matched the previous default
     setPackages((prev) =>

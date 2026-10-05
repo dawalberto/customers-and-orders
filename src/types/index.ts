@@ -8,6 +8,8 @@ export interface ShippingRateConfig {
   'En mano': number;
   'Ordinario': number;
   'Certificado': number;
+  giftThresholdEnabled?: boolean;
+  giftThresholdAmount?: number;
 }
 
 export interface OrderPackage {

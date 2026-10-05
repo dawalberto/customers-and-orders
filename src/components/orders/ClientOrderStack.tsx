@@ -10,7 +10,7 @@ import {
   Layers,
   Send
 } from 'lucide-react';
-import { Client, Order, OrderPackage } from '../../types';
+import { Client, Order, OrderPackage, ShippingRateConfig } from '../../types';
 import { formatCurrency } from '../../utils/dateUtils';
 import { OrderCard } from './OrderCard';
 import { OrderPriceDisplay } from '../common/OrderPriceDisplay';
@@ -25,6 +25,7 @@ interface ClientOrderStackProps {
   onAddOrderForClient?: (clientId: string) => void;
   onMovePackage?: (pkg: OrderPackage, order: Order) => void;
   defaultExpanded?: boolean;
+  shippingRates?: ShippingRateConfig | null;
 }
 
 export const ClientOrderStack: React.FC<ClientOrderStackProps> = ({
@@ -37,6 +38,7 @@ export const ClientOrderStack: React.FC<ClientOrderStackProps> = ({
   onAddOrderForClient,
   onMovePackage,
   defaultExpanded = false,
+  shippingRates,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -45,6 +47,13 @@ export const ClientOrderStack: React.FC<ClientOrderStackProps> = ({
   const readyOrders = orders.filter((o) => o.status === 'listo');
   const packagedOrders = orders.filter((o) => o.status === 'empaquetado');
   const sentOrders = orders.filter((o) => o.status === 'enviado');
+
+  // Gift check for stack
+  const stackHasGift = Boolean(
+    shippingRates?.giftThresholdEnabled &&
+    typeof shippingRates.giftThresholdAmount === 'number' &&
+    orders.some((o) => (Number(o.price) || 0) >= shippingRates.giftThresholdAmount!)
+  );
 
   // Package counts
   const totalPackagesInStack = orders.reduce((sum, o) => sum + (o.packages?.length || 1), 0);
@@ -138,6 +147,11 @@ export const ClientOrderStack: React.FC<ClientOrderStackProps> = ({
                   ✅ {sentOrders.length} ({sentPackages} paq.)
                 </span>
               )}
+              {stackHasGift && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs" title="Este cliente tiene al menos un pedido con regalo">
+                  🎁 Regalo
+                </span>
+              )}
             </div>
 
             {/* Total Money in this stack */}
@@ -196,6 +210,7 @@ export const ClientOrderStack: React.FC<ClientOrderStackProps> = ({
                 onSelectClient={onSelectClient}
                 onMovePackage={onMovePackage}
                 initialExpanded={orders.length === 1}
+                shippingRates={shippingRates}
               />
             ))}
           </div>

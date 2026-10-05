@@ -9,7 +9,8 @@ import {
   Clock, 
   Check, 
   X,
-  Sparkles
+  Sparkles,
+  Gift
 } from 'lucide-react';
 import { ShippingRateConfig, Order, ShippingType } from '../../types';
 import { getShippingRates, saveShippingRates } from '../../services/storage';
@@ -24,11 +25,15 @@ export const ShippingView: React.FC<ShippingViewProps> = ({ orders }) => {
     'En mano': 0,
     'Ordinario': 2.50,
     'Certificado': 5.95,
+    giftThresholdEnabled: false,
+    giftThresholdAmount: 30,
   });
   const [initialRates, setInitialRates] = useState<ShippingRateConfig>({
     'En mano': 0,
     'Ordinario': 2.50,
     'Certificado': 5.95,
+    giftThresholdEnabled: false,
+    giftThresholdAmount: 30,
   });
 
   const [loading, setLoading] = useState(true);
@@ -51,10 +56,16 @@ export const ShippingView: React.FC<ShippingViewProps> = ({ orders }) => {
     'Certificado': orders.filter((o) => o.shippingType === 'Certificado').length,
   };
 
-  const hasChanges = 
+  const hasShippingPriceChanges = 
     rates['En mano'] !== initialRates['En mano'] ||
     rates['Ordinario'] !== initialRates['Ordinario'] ||
     rates['Certificado'] !== initialRates['Certificado'];
+
+  const hasGiftChanges =
+    rates.giftThresholdEnabled !== initialRates.giftThresholdEnabled ||
+    rates.giftThresholdAmount !== initialRates.giftThresholdAmount;
+
+  const hasChanges = hasShippingPriceChanges || hasGiftChanges;
 
   const handleOpenSaveDialog = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,8 +73,14 @@ export const ShippingView: React.FC<ShippingViewProps> = ({ orders }) => {
       setStatusMsg({ type: 'success', text: 'No hay cambios pendientes de guardar en las tarifas.' });
       return;
     }
-    // Open confirmation modal to let user decide update scope
-    setShowConfirmModal(true);
+
+    // Only ask whether to update existing orders if the shipping rates themselves changed
+    if (hasShippingPriceChanges) {
+      setShowConfirmModal(true);
+    } else {
+      // If only gift threshold changed, save directly
+      handleApplyRates(false);
+    }
   };
 
   const handleApplyRates = async (updateExisting: boolean) => {
@@ -77,8 +94,8 @@ export const ShippingView: React.FC<ShippingViewProps> = ({ orders }) => {
       setStatusMsg({
         type: 'success',
         text: updateExisting
-          ? `Tarifas guardadas. Se han actualizado ${result.updatedOrdersCount} pedidos anteriores.`
-          : 'Tarifas guardadas para pedidos futuros. Los pedidos anteriores mantienen sus precios.',
+          ? `Configuración guardada. Se han actualizado ${result.updatedOrdersCount} pedidos anteriores.`
+          : 'Configuración guardada correctamente.',
       });
     } catch (err: any) {
       console.error(err);
@@ -87,6 +104,11 @@ export const ShippingView: React.FC<ShippingViewProps> = ({ orders }) => {
       setSaving(false);
     }
   };
+
+  // Preview count of orders currently qualifying for gift if enabled
+  const qualifyingOrdersCount = (rates.giftThresholdEnabled && typeof rates.giftThresholdAmount === 'number')
+    ? orders.filter((o) => (Number(o.price) || 0) >= rates.giftThresholdAmount!).length
+    : 0;
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 px-1 sm:px-0 overflow-x-hidden">
@@ -97,8 +119,8 @@ export const ShippingView: React.FC<ShippingViewProps> = ({ orders }) => {
             <Send className="w-5 h-5 -rotate-12" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-extrabold truncate">Tarifas de Envío</h1>
-            <p className="text-xs text-zinc-400">Configura el precio asignado por defecto a cada método de entrega</p>
+            <h1 className="text-lg sm:text-xl font-extrabold truncate">Tarifas y Envíos</h1>
+            <p className="text-xs text-zinc-400">Configura precios de entrega y promociones con regalo por pedido</p>
           </div>
         </div>
 
@@ -107,6 +129,12 @@ export const ShippingView: React.FC<ShippingViewProps> = ({ orders }) => {
             <Package className="w-4 h-4 text-purple-400" />
             <span>Total de pedidos registrados: <strong className="text-white">{orders.length}</strong></span>
           </div>
+          {rates.giftThresholdEnabled && (
+            <div className="flex items-center gap-1.5 text-rose-300">
+              <Gift className="w-4 h-4 text-rose-400" />
+              <span>Regalo activo a partir de: <strong>{formatCurrency(rates.giftThresholdAmount || 0)}</strong> ({qualifyingOrdersCount} pedidos actuales)</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -133,6 +161,7 @@ export const ShippingView: React.FC<ShippingViewProps> = ({ orders }) => {
 
       {/* Rates Form */}
       <form onSubmit={handleOpenSaveDialog} className="space-y-4">
+        {/* 1. Precios de Envío */}
         <div className="bg-white rounded-3xl border border-purple-100 p-5 sm:p-6 shadow-2xs space-y-5">
           <div className="flex items-center justify-between pb-3 border-b border-purple-100/80">
             <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
@@ -230,34 +259,94 @@ export const ShippingView: React.FC<ShippingViewProps> = ({ orders }) => {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Format preview explanation */}
-          <div className="bg-purple-100/60 rounded-2xl p-3.5 border border-purple-200 text-xs text-purple-950 space-y-1">
-            <span className="font-bold flex items-center gap-1.5 text-purple-900">
-              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-              Visualización de precios en pedidos:
-            </span>
-            <p className="leading-relaxed text-purple-900/90">
-              En las tarjetas de pedidos se mostrará el desglose claro de: <br className="sm:hidden" />
-              <strong className="text-slate-900">Precio Producto</strong> + <strong className="text-slate-900">Coste Envío <Send className="w-3 h-3 inline text-purple-600 -rotate-12 align-baseline" /></strong> = <strong className="text-slate-950">Total</strong>
-            </p>
+        {/* 2. REQUIREMENT: REGALO A PARTIR DE (SWITCH + INPUT) */}
+        <div className="bg-white rounded-3xl border border-purple-100 p-5 sm:p-6 shadow-2xs space-y-4">
+          <div className="flex items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200/90 flex items-center justify-center shrink-0">
+                <Gift className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                  <span>🎁 Regalo a partir de...</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Activa esta opción para destacar con un distintivo especial los pedidos que incluyan un detalle de regalo para el cliente.
+                </p>
+              </div>
+            </div>
+
+            {/* Switch Toggle */}
+            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1 sm:mt-0">
+              <input
+                type="checkbox"
+                checked={rates.giftThresholdEnabled ?? false}
+                onChange={(e) => setRates({ ...rates, giftThresholdEnabled: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-12 h-6.5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5.5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2.5px] after:left-[3px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 shadow-2xs"></div>
+            </label>
           </div>
 
-          {/* Footer Submit Button */}
-          <div className="pt-2 flex items-center justify-end">
-            <button
-              type="submit"
-              disabled={saving || !hasChanges}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs sm:text-sm shadow-xs transition active:scale-95 disabled:opacity-50"
-            >
-              <Check className="w-4 h-4 text-purple-300" />
-              <span>Guardar Tarifas de Envío</span>
-            </button>
-          </div>
+          {/* Conditional input when switch is ON */}
+          {rates.giftThresholdEnabled && (
+            <div className="pt-3 border-t border-purple-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-150">
+              <div className="min-w-0">
+                <label className="block text-xs font-extrabold text-slate-800">
+                  Cantidad mínima de productos (€):
+                </label>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Cualquier pedido cuyo precio de artículos (sin contar el envío) sea igual o superior a este importe mostrará el badge de regalo.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <div className="relative w-32">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required={rates.giftThresholdEnabled}
+                    value={rates.giftThresholdAmount ?? 30}
+                    onChange={(e) => setRates({ ...rates, giftThresholdAmount: parseFloat(e.target.value) || 0 })}
+                    placeholder="30.00"
+                    className="w-full pl-3 pr-7 py-2 rounded-xl border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 outline-none text-sm font-black bg-rose-50/30 text-slate-900 text-right"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-rose-500">€</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {rates.giftThresholdEnabled && (
+            <div className="p-3 rounded-2xl bg-rose-50/70 border border-rose-200/80 text-xs text-rose-950 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 font-semibold">
+                <Sparkles className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>Distintivo activo en pedidos:</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-rose-700 border border-rose-200 shadow-2xs">
+                🎁 Lleva regalo (≥ {formatCurrency(rates.giftThresholdAmount || 0)})
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Submit Button */}
+        <div className="pt-2 flex items-center justify-end">
+          <button
+            type="submit"
+            disabled={saving || !hasChanges}
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs sm:text-sm shadow-xs transition active:scale-95 disabled:opacity-50"
+          >
+            <Check className="w-4 h-4 text-purple-300" />
+            <span>Guardar Configuración de Envíos</span>
+          </button>
         </div>
       </form>
 
-      {/* Confirmation Modal to Decide Scope of Update */}
+      {/* Confirmation Modal to Decide Scope of Update (Only when shipping rate prices change) */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-150 overflow-x-hidden">
           <div className="bg-white w-full max-w-md rounded-3xl p-5 sm:p-6 shadow-2xl border border-purple-100 space-y-4 animate-in zoom-in-95 duration-150">
