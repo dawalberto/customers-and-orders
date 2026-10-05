@@ -19,9 +19,9 @@ import { normalizeSearch } from '../../utils/dateUtils';
 interface OrdersViewProps {
   orders: Order[];
   clients: Client[];
-  onSaveOrder: (order: Partial<Order> & { clientId: string; price: number; shippingType: Order['shippingType']; orderDate: string }) => void;
-  onDeleteOrder: (orderId: string) => void;
-  onQuickCreateClient?: (client: Partial<Client> & { name: string }) => Client;
+  onSaveOrder: (order: Partial<Order> & { clientId: string; price: number; shippingType: Order['shippingType']; orderDate: string }) => void | Promise<void>;
+  onDeleteOrder: (orderId: string) => void | Promise<void>;
+  onQuickCreateClient?: (client: Partial<Client> & { name: string }) => Promise<Client> | Client;
   selectedClientId?: string | null;
   onClearClientFilter?: () => void;
   onSelectClient?: (clientId: string) => void;

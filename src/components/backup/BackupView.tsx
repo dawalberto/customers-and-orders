@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Download, 
   Upload, 
@@ -13,7 +13,7 @@ import {
   Copy,
   Check
 } from 'lucide-react';
-import { exportBackup, importBackup, clearAllData } from '../../services/storage';
+import { exportBackup, importBackup, clearAllData, getEstimatedStorageSize } from '../../services/storage';
 import { AppDataBackup } from '../../types';
 
 interface BackupViewProps {
@@ -30,18 +30,16 @@ export const BackupView: React.FC<BackupViewProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [importMode, setImportMode] = useState<'replace' | 'merge'>('replace');
   const [copied, setCopied] = useState(false);
+  const [storageSize, setStorageSize] = useState<string>('0');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Storage usage estimation
-  const getLocalStorageSize = () => {
-    let total = 0;
-    for (const key in localStorage) {
-      if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
-        total += ((localStorage[key].length + key.length) * 2);
-      }
-    }
-    return (total / 1024).toFixed(1); // in KB
+  const refreshStorageSize = () => {
+    getEstimatedStorageSize().then(setStorageSize);
   };
+
+  useEffect(() => {
+    refreshStorageSize();
+  }, [clientsCount, ordersCount]);
 
   /**
    * PWA & Mobile-compatible export function:
@@ -50,7 +48,7 @@ export const BackupView: React.FC<BackupViewProps> = ({
    */
   const handleExport = async () => {
     try {
-      const backup = exportBackup();
+      const backup = await exportBackup();
       const dateStr = new Date().toISOString().split('T')[0];
       const filename = `mis-pedidos-copia-${dateStr}.json`;
       const jsonString = JSON.stringify(backup, null, 2);
@@ -104,9 +102,9 @@ export const BackupView: React.FC<BackupViewProps> = ({
   };
 
   // Copy raw JSON to clipboard as a 100% foolproof fallback
-  const handleCopyJsonToClipboard = () => {
+  const handleCopyJsonToClipboard = async () => {
     try {
-      const backup = exportBackup();
+      const backup = await exportBackup();
       const jsonString = JSON.stringify(backup, null, 2);
       navigator.clipboard.writeText(jsonString);
       setCopied(true);
@@ -128,13 +126,14 @@ export const BackupView: React.FC<BackupViewProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string) as AppDataBackup;
-        const result = importBackup(parsed, importMode);
+        const result = await importBackup(parsed, importMode);
+        refreshStorageSize();
         setStatusMessage({
           type: 'success',
-          text: `Datos importados con éxito: ${result.clientsCount} clientes y ${result.ordersCount} pedidos restaurados en la app.`,
+          text: `Datos importados con éxito en IndexedDB: ${result.clientsCount} clientes y ${result.ordersCount} pedidos restaurados en la app.`,
         });
       } catch (err: any) {
         console.error(err);
@@ -148,12 +147,13 @@ export const BackupView: React.FC<BackupViewProps> = ({
     e.target.value = '';
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (window.confirm('¿ATENCIÓN: Seguro que deseas eliminar todos los datos de la app? Esta acción no se puede deshacer a menos que tengas una copia en JSON.')) {
-      clearAllData();
+      await clearAllData();
+      refreshStorageSize();
       setStatusMessage({
         type: 'success',
-        text: 'Todos los datos locales han sido borrados.',
+        text: 'Todos los datos locales de IndexedDB han sido borrados.',
       });
     }
   };
@@ -185,7 +185,7 @@ export const BackupView: React.FC<BackupViewProps> = ({
         <div className="mt-4 pt-3.5 border-t border-zinc-800/80 flex flex-wrap gap-4 text-xs font-medium text-zinc-300">
           <div className="flex items-center gap-1.5">
             <HardDrive className="w-4 h-4 text-purple-400" />
-            <span>Espacio ocupado: <strong>~{getLocalStorageSize()} KB</strong></span>
+            <span>Espacio ocupado (IndexedDB): <strong>~{storageSize} KB</strong></span>
           </div>
           <div>
             <span>Clientes: <strong className="text-white">{clientsCount}</strong></span>

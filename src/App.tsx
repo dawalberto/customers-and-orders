@@ -38,9 +38,17 @@ export default function App() {
 
   // Load data & handle URL hash routing
   useEffect(() => {
-    const loadData = () => {
-      setClients(getClients());
-      setOrders(getOrders());
+    const loadData = async () => {
+      try {
+        const [loadedClients, loadedOrders] = await Promise.all([
+          getClients(),
+          getOrders(),
+        ]);
+        setClients(loadedClients);
+        setOrders(loadedOrders);
+      } catch (err) {
+        console.error('Error loading data from IndexedDB:', err);
+      }
     };
 
     loadData();
@@ -89,24 +97,24 @@ export default function App() {
     navigateToTab('orders');
   };
 
-  const handleSaveClient = (clientData: Partial<Client> & { name: string }) => {
-    return saveClient(clientData);
+  const handleSaveClient = async (clientData: Partial<Client> & { name: string }) => {
+    return await saveClient(clientData);
   };
 
-  const handleDeleteClient = (clientId: string) => {
-    deleteClient(clientId);
+  const handleDeleteClient = async (clientId: string) => {
+    await deleteClient(clientId);
   };
 
-  const handleSaveOrder = (orderData: Partial<Order> & { clientId: string; price: number; shippingType: Order['shippingType']; orderDate: string }) => {
-    saveOrder(orderData);
+  const handleSaveOrder = async (orderData: Partial<Order> & { clientId: string; price: number; shippingType: Order['shippingType']; orderDate: string }) => {
+    await saveOrder(orderData);
   };
 
-  const handleDeleteOrder = (orderId: string) => {
-    deleteOrder(orderId);
+  const handleDeleteOrder = async (orderId: string) => {
+    await deleteOrder(orderId);
   };
 
-  const handleQuickCreateClient = (clientData: Partial<Client> & { name: string }): Client => {
-    return saveClient(clientData);
+  const handleQuickCreateClient = async (clientData: Partial<Client> & { name: string }): Promise<Client> => {
+    return await saveClient(clientData);
   };
 
   const pendingOrdersCount = orders.filter((o) => o.status === 'pendiente').length;

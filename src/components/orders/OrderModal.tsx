@@ -8,9 +8,9 @@ import { ClientModal } from '../clients/ClientModal';
 interface OrderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (orderData: Partial<Order> & { clientId: string; price: number; shippingType: ShippingType; orderDate: string }) => void;
+  onSave: (orderData: Partial<Order> & { clientId: string; price: number; shippingType: ShippingType; orderDate: string }) => void | Promise<void>;
   clients: Client[];
-  onQuickCreateClient?: (clientData: Partial<Client> & { name: string }) => Client;
+  onQuickCreateClient?: (clientData: Partial<Client> & { name: string }) => Promise<Client> | Client;
   preselectedClientId?: string;
 }
 
@@ -62,9 +62,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     }
   };
 
-  const handleQuickClientSaved = (clientData: Partial<Client> & { name: string }) => {
+  const handleQuickClientSaved = async (clientData: Partial<Client> & { name: string }) => {
     if (onQuickCreateClient) {
-      const created = onQuickCreateClient(clientData);
+      const created = await onQuickCreateClient(clientData);
       setClientId(created.id);
       if (created.address) {
         setShippingAddress(created.address);

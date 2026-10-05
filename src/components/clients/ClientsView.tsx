@@ -8,8 +8,8 @@ import { normalizeSearch } from '../../utils/dateUtils';
 interface ClientsViewProps {
   clients: Client[];
   orders: Order[];
-  onSaveClient: (client: Partial<Client> & { name: string }) => void;
-  onDeleteClient: (clientId: string) => void;
+  onSaveClient: (client: Partial<Client> & { name: string }) => void | Promise<any>;
+  onDeleteClient: (clientId: string) => void | Promise<any>;
   onNavigateToOrders: (clientId: string) => void;
   onCreateOrderForClient: (clientId: string) => void;
 }
