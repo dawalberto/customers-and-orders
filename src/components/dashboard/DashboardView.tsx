@@ -6,6 +6,8 @@ import {
   Clock, 
   Send, 
   Users, 
+  Boxes,
+  Gift
 } from 'lucide-react';
 import { Order, Client } from '../../types';
 import { formatCurrency, calculateDaysBetween, getTodayDateString } from '../../utils/dateUtils';
@@ -48,52 +50,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     let dayOrders = 0;
     let dayMoney = 0;
 
+    let totalPackagesCount = 0;
+
     const prepDaysList: number[] = [];
+    const packageDaysList: number[] = [];
     const shipDaysList: number[] = [];
 
     orders.forEach((o) => {
-      const priceVal = Number(o.price) || 0;
+      // REQUIREMENT: "En todos los lugares de la página de análisis donde aparecen precios de pedidos, hacer el cálculo siempre excluyendo el envío ya que este dinero no le llega nunca al vendedor y solo queremos analizar el dinero que realmente entra"
+      const productPrice = Number(o.price) || 0;
       const orderDate = new Date(o.orderDate);
       const isToday = o.orderDate === todayStr;
 
+      totalPackagesCount += (o.packages?.length || 1);
+
       if (orderDate.getFullYear() === currentYear) {
         yearOrders++;
-        yearMoney += priceVal;
+        yearMoney += productPrice;
       }
 
       if (orderDate.getFullYear() === currentYear && orderDate.getMonth() === currentMonth) {
         monthOrders++;
-        monthMoney += priceVal;
+        monthMoney += productPrice;
       }
 
       if (orderDate >= startOfWeek) {
         weekOrders++;
-        weekMoney += priceVal;
+        weekMoney += productPrice;
       }
 
       if (isToday) {
         dayOrders++;
-        dayMoney += priceVal;
+        dayMoney += productPrice;
       }
 
+      // Time from order to ready
       if (o.readyDate && o.orderDate) {
         const diff = calculateDaysBetween(o.orderDate, o.readyDate);
-        if (diff !== null) {
-          prepDaysList.push(diff.days);
-        }
+        if (diff !== null) prepDaysList.push(diff.days);
       }
 
+      // Time from ready to packaged
+      if (o.packagedDate && o.readyDate) {
+        const diff = calculateDaysBetween(o.readyDate, o.packagedDate);
+        if (diff !== null) packageDaysList.push(diff.days);
+      }
+
+      // Time from packaged to shipped
       if (o.shippedDate) {
-        const baseDate = o.readyDate || o.orderDate;
+        const baseDate = o.packagedDate || o.readyDate || o.orderDate;
         const diff = calculateDaysBetween(baseDate, o.shippedDate);
-        if (diff !== null) {
-          shipDaysList.push(diff.days);
-        }
+        if (diff !== null) shipDaysList.push(diff.days);
       }
     });
 
     const avgPrepDays = prepDaysList.length > 0
       ? (prepDaysList.reduce((a, b) => a + b, 0) / prepDaysList.length).toFixed(1)
+      : null;
+
+    const avgPackageDays = packageDaysList.length > 0
+      ? (packageDaysList.reduce((a, b) => a + b, 0) / packageDaysList.length).toFixed(1)
       : null;
 
     const avgShipDays = shipDaysList.length > 0
@@ -102,6 +118,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     const avgOrdersPerClient = clients.length > 0
       ? (orders.length / clients.length).toFixed(1)
+      : '0';
+
+    // REQUIREMENT: "Añadir a la vista de análisis datos sobre: Media de paquetes por pedido"
+    const avgPackagesPerOrder = orders.length > 0
+      ? (totalPackagesCount / orders.length).toFixed(1)
       : '0';
 
     return {
@@ -113,7 +134,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       weekMoney,
       dayOrders,
       dayMoney,
+      totalPackagesCount,
+      avgPackagesPerOrder,
       avgPrepDays,
+      avgPackageDays,
       avgShipDays,
       avgOrdersPerClient,
     };
@@ -123,14 +147,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="space-y-6 overflow-x-hidden">
       {/* 1. Overview General */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
           <div>
             <h2 className="text-lg font-extrabold text-slate-900">Resumen y Análisis</h2>
             <p className="text-xs text-slate-500">Métricas en tiempo real de tu taller de bisutería</p>
           </div>
+          <span className="text-[11px] font-semibold text-purple-800 bg-purple-100/70 border border-purple-200 px-2.5 py-1 rounded-xl self-start sm:self-auto">
+            💰 Facturación sin envíos (ingresos reales)
+          </span>
         </div>
 
-        {/* Primary Period KPIs Grid */}
+        {/* Primary Period KPIs Grid (Product price only, excluding shipping fee) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
           {/* Hoy */}
           <div className="bg-white rounded-3xl border border-purple-100 p-3.5 sm:p-4 shadow-2xs hover:shadow-xs transition">
@@ -189,49 +216,64 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Operational Efficiency KPIs */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3.5 mt-3">
+        {/* Operational Efficiency KPIs & Media Paquetes por Pedido */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5 mt-3">
+          {/* Media paquetes por pedido (REQUIREMENT) */}
+          <div className="bg-white rounded-2xl border border-purple-200/90 p-3.5 shadow-2xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-800 border border-purple-200 flex items-center justify-center shrink-0">
+              <Boxes className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[11px] font-bold text-purple-950 block leading-tight">
+                Media paq. / pedido
+              </span>
+              <div className="text-base sm:text-lg font-black text-slate-950 truncate">
+                {metrics.avgPackagesPerOrder} <span className="text-xs font-normal text-slate-500">paq.</span>
+              </div>
+            </div>
+          </div>
+
           {/* Prep time */}
           <div className="bg-white rounded-2xl border border-purple-100/90 p-3.5 shadow-2xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 flex items-center justify-center shrink-0">
               <Clock className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <span className="text-[11px] font-semibold text-slate-500 block leading-tight">
-                Tiempo medio preparar
+                Media preparar
               </span>
               <div className="text-base sm:text-lg font-bold text-slate-900 truncate">
-                {metrics.avgPrepDays !== null ? `${metrics.avgPrepDays} días` : 'Sin datos'}
+                {metrics.avgPrepDays !== null ? `${metrics.avgPrepDays} días` : '-'}
+              </div>
+            </div>
+          </div>
+
+          {/* Package time (Listo a Empaquetado) */}
+          <div className="bg-white rounded-2xl border border-purple-100/90 p-3.5 shadow-2xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center justify-center shrink-0">
+              <Gift className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[11px] font-semibold text-slate-500 block leading-tight">
+                Media empaquetar
+              </span>
+              <div className="text-base sm:text-lg font-bold text-slate-900 truncate">
+                {metrics.avgPackageDays !== null ? `${metrics.avgPackageDays} días` : '-'}
               </div>
             </div>
           </div>
 
           {/* Ship time */}
           <div className="bg-white rounded-2xl border border-purple-100/90 p-3.5 shadow-2xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center shrink-0">
               <Send className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <span className="text-[11px] font-semibold text-slate-500 block leading-tight">
-                Tiempo medio enviar
+                Media enviar
               </span>
               <div className="text-base sm:text-lg font-bold text-slate-900 truncate">
-                {metrics.avgShipDays !== null ? `${metrics.avgShipDays} días` : 'Sin datos'}
-              </div>
-            </div>
-          </div>
-
-          {/* Average orders per client */}
-          <div className="bg-white rounded-2xl border border-purple-100/90 p-3.5 shadow-2xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[11px] font-semibold text-slate-500 block leading-tight">
-                Media pedidos / cliente
-              </span>
-              <div className="text-base sm:text-lg font-bold text-slate-900 truncate">
-                {metrics.avgOrdersPerClient} pedidos
+                {metrics.avgShipDays !== null ? `${metrics.avgShipDays} días` : '-'}
               </div>
             </div>
           </div>

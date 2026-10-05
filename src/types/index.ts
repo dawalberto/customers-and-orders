@@ -1,8 +1,23 @@
 export type ShippingType = 'Ordinario' | 'Certificado' | 'En mano' | '';
 
-export type OrderStatus = 'pendiente' | 'listo' | 'enviado';
+export type OrderStatus = 'pendiente' | 'listo' | 'empaquetado' | 'enviado';
 
 export type OrdersViewMode = 'stack' | 'list';
+
+export interface ShippingRateConfig {
+  'En mano': number;
+  'Ordinario': number;
+  'Certificado': number;
+}
+
+export interface OrderPackage {
+  id: string;
+  description: string;
+  price: number;
+  shippingType?: ShippingType;
+  status: OrderStatus;
+  photo?: string;
+}
 
 export interface Client {
   id: string;
@@ -23,7 +38,8 @@ export interface Order {
   id: string;
   description?: string;
   clientId: string; // mandatory
-  price: number; // mandatory in €
+  price: number; // product price (sum of package prices)
+  shippingCost?: number; // shipping fee
   shippingAddress: string; // defaults to client's address
   isCustomAddress?: boolean; // whether address was manually overridden
   shippingType: ShippingType; // mandatory, empty by default
@@ -31,7 +47,9 @@ export interface Order {
   photo?: string; // base64 compressed
   status: OrderStatus; // defaults to 'pendiente'
   readyDate?: string; // auto-filled when marked as 'listo'
+  packagedDate?: string; // auto-filled when marked as 'empaquetado'
   shippedDate?: string; // auto-filled when marked as 'enviado'
+  packages: OrderPackage[]; // packages in this order
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +59,7 @@ export interface AppDataBackup {
   exportedAt: string;
   clients: Client[];
   orders: Order[];
+  shippingRates?: ShippingRateConfig;
 }
 
-export type ActiveTab = 'clients' | 'orders' | 'dashboard' | 'data';
+export type ActiveTab = 'clients' | 'orders' | 'shipping' | 'dashboard' | 'data';

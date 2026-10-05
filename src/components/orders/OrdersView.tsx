@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -10,7 +10,7 @@ import {
   Layers,
   List
 } from 'lucide-react';
-import { Order, Client, OrdersViewMode } from '../../types';
+import { Order, Client, OrdersViewMode, OrderPackage } from '../../types';
 import { OrderCard } from './OrderCard';
 import { ClientOrderStack } from './ClientOrderStack';
 import { OrderModal } from './OrderModal';
@@ -19,7 +19,7 @@ import { normalizeSearch } from '../../utils/dateUtils';
 interface OrdersViewProps {
   orders: Order[];
   clients: Client[];
-  onSaveOrder: (order: Partial<Order> & { clientId: string; price: number; shippingType: Order['shippingType']; orderDate: string }) => void | Promise<void>;
+  onSaveOrder: (order: Partial<Order> & { clientId: string; shippingType: Order['shippingType']; orderDate: string; packages: OrderPackage[] }) => void | Promise<void>;
   onDeleteOrder: (orderId: string) => void | Promise<void>;
   onQuickCreateClient?: (client: Partial<Client> & { name: string }) => Promise<Client> | Client;
   selectedClientId?: string | null;
@@ -50,16 +50,29 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   // Preselected client for creating order from stack
   const [modalClientId, setModalClientId] = useState<string | undefined>(undefined);
 
-  React.useEffect(() => {
+  // REQUIREMENT: Clear or update active client filter based on prop changes
+  useEffect(() => {
     if (selectedClientId) {
       setActiveClientId(selectedClientId);
+    } else {
+      setActiveClientId('all');
     }
   }, [selectedClientId]);
 
-  // Counts by status
-  const pendingCount = orders.filter((o) => o.status === 'pendiente').length;
-  const readyCount = orders.filter((o) => o.status === 'listo').length;
-  const sentCount = orders.filter((o) => o.status === 'enviado').length;
+  // Counts of both orders and packages
+  const totalPackages = useMemo(() => orders.reduce((sum, o) => sum + (o.packages?.length || 1), 0), [orders]);
+
+  const pendingOrders = useMemo(() => orders.filter((o) => o.status === 'pendiente'), [orders]);
+  const pendingPackages = useMemo(() => pendingOrders.reduce((sum, o) => sum + (o.packages?.length || 1), 0), [pendingOrders]);
+
+  const readyOrders = useMemo(() => orders.filter((o) => o.status === 'listo'), [orders]);
+  const readyPackages = useMemo(() => readyOrders.reduce((sum, o) => sum + (o.packages?.length || 1), 0), [readyOrders]);
+
+  const packagedOrders = useMemo(() => orders.filter((o) => o.status === 'empaquetado'), [orders]);
+  const packagedPackages = useMemo(() => packagedOrders.reduce((sum, o) => sum + (o.packages?.length || 1), 0), [packagedOrders]);
+
+  const sentOrders = useMemo(() => orders.filter((o) => o.status === 'enviado'), [orders]);
+  const sentPackages = useMemo(() => sentOrders.reduce((sum, o) => sum + (o.packages?.length || 1), 0), [sentOrders]);
 
   const filteredAndSortedOrders = useMemo(() => {
     const query = normalizeSearch(searchTerm);
@@ -81,12 +94,14 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
       if (query) {
         const client = clients.find((c) => c.id === order.clientId);
         const normDesc = normalizeSearch(order.description);
+        const normPackages = (order.packages || []).map((p) => normalizeSearch(p.description)).join(' ');
         const normClientName = client ? normalizeSearch(`${client.name} ${client.surnames || ''}`) : '';
         const normAddress = normalizeSearch(order.shippingAddress);
         const normShippingType = normalizeSearch(order.shippingType);
 
         if (
           !normDesc.includes(query) &&
+          !normPackages.includes(query) &&
           !normClientName.includes(query) &&
           !normAddress.includes(query) &&
           !normShippingType.includes(query)
@@ -101,18 +116,23 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
     // 2. Sort
     return filtered.sort((a, b) => {
       if (sortMode === 'pending-oldest-first') {
-        const isAPending = a.status === 'pendiente';
-        const isBPending = b.status === 'pendiente';
+        const priorityOrder: Record<string, number> = {
+          pendiente: 0,
+          listo: 1,
+          empaquetado: 2,
+          enviado: 3,
+        };
 
-        if (isAPending && !isBPending) return -1;
-        if (!isAPending && isBPending) return 1;
+        const rankA = priorityOrder[a.status] ?? 99;
+        const rankB = priorityOrder[b.status] ?? 99;
 
-        if (isAPending && isBPending) {
-          return new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime();
+        if (rankA !== rankB) {
+          return rankA - rankB;
         }
 
-        if (a.status === 'listo' && b.status === 'enviado') return -1;
-        if (a.status === 'enviado' && b.status === 'listo') return 1;
+        if (a.status === 'pendiente') {
+          return new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime();
+        }
 
         return new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime();
       }
@@ -139,7 +159,6 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
       map.set(o.clientId, arr);
     });
 
-    // Transform into array of objects with client and sorted orders
     const stacks = Array.from(map.entries()).map(([cId, clientOrders]) => {
       const client = clients.find((c) => c.id === cId);
       const hasPending = clientOrders.some((o) => o.status === 'pendiente');
@@ -160,7 +179,6 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
       };
     });
 
-    // Sort stacks: stacks with pending orders first (oldest pending date first), matching user priority
     stacks.sort((a, b) => {
       if (a.hasPending && !b.hasPending) return -1;
       if (!a.hasPending && b.hasPending) return 1;
@@ -190,7 +208,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por descripción, cliente, dirección..."
+            placeholder="Buscar por artículos, paquetes, cliente, dirección..."
             className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white border border-slate-200/90 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm placeholder:text-slate-400 shadow-2xs transition"
           />
           {searchTerm && (
@@ -242,38 +260,56 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
         </div>
       )}
 
-      {/* 3. Status Segmented Filter Bar */}
+      {/* 3. Status Segmented Filter Bar: SHOWS ORDERS AND PACKAGES COUNT */}
       <div className="flex flex-wrap items-center gap-1.5 p-1 bg-white rounded-2xl border border-purple-100 shadow-2xs">
         <button
           onClick={() => setStatusFilter('todos')}
-          className={`flex-1 min-w-[70px] py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition ${
+          className={`flex-1 min-w-[80px] py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition ${
             statusFilter === 'todos'
-              ? 'bg-zinc-900 text-white shadow-2xs'
+              ? 'bg-zinc-900 text-white shadow-2xs font-bold'
               : 'text-slate-600 hover:bg-purple-50/60'
           }`}
         >
-          Todos ({orders.length})
+          <span>Todos</span>
+          <span className="block text-[10px] opacity-80">{orders.length} ped. · {totalPackages} paq.</span>
         </button>
+
         <button
           onClick={() => setStatusFilter('pendiente')}
-          className={`flex-1 min-w-[90px] py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition ${
+          className={`flex-1 min-w-[85px] py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition ${
             statusFilter === 'pendiente'
               ? 'bg-amber-500 text-white shadow-2xs font-bold'
               : 'text-amber-800 hover:bg-amber-50'
           }`}
         >
-          ⏳ Pendientes ({pendingCount})
+          <span>⏳ Pendientes</span>
+          <span className="block text-[10px] opacity-80">{pendingOrders.length} ped. · {pendingPackages} paq.</span>
         </button>
+
         <button
           onClick={() => setStatusFilter('listo')}
-          className={`flex-1 min-w-[75px] py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition ${
+          className={`flex-1 min-w-[85px] py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition ${
             statusFilter === 'listo'
               ? 'bg-purple-600 text-white shadow-2xs font-bold'
               : 'text-purple-800 hover:bg-purple-50'
           }`}
         >
-          📦 Listos ({readyCount})
+          <span>📦 Listos</span>
+          <span className="block text-[10px] opacity-80">{readyOrders.length} ped. · {readyPackages} paq.</span>
         </button>
+
+        <button
+          onClick={() => setStatusFilter('empaquetado')}
+          className={`flex-1 min-w-[95px] py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition ${
+            statusFilter === 'empaquetado'
+              ? 'bg-indigo-600 text-white shadow-2xs font-bold'
+              : 'text-indigo-800 hover:bg-indigo-50'
+          }`}
+        >
+          <span>🎁 Empaquetados</span>
+          <span className="block text-[10px] opacity-80">{packagedOrders.length} ped. · {packagedPackages} paq.</span>
+        </button>
+
         <button
           onClick={() => setStatusFilter('enviado')}
           className={`flex-1 min-w-[85px] py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition ${
@@ -282,7 +318,8 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               : 'text-emerald-800 hover:bg-emerald-50'
           }`}
         >
-          ✅ Enviados ({sentCount})
+          <span>✅ Enviados</span>
+          <span className="block text-[10px] opacity-80">{sentOrders.length} ped. · {sentPackages} paq.</span>
         </button>
       </div>
 
@@ -378,7 +415,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           </div>
           <h3 className="text-lg font-bold text-slate-900 mb-1">No hay pedidos registrados</h3>
           <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-            Registra tus ventas de pendientes y bisutería. Podrás hacer seguimiento del estado de preparación y envío al instante.
+            Registra tus ventas de pendientes y bisutería. Puedes añadir múltiples paquetes por pedido y hacer seguimiento del estado de preparación y envío.
           </p>
           <button
             onClick={() => handleOpenAddModal()}
@@ -408,7 +445,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
         </div>
       ) : viewMode === 'stack' ? (
         /* VISTA 2 (DEFAULT): Stack por cliente */
-        <div className="space-y-3.5">
+        <div className="space-y-4">
           {clientStacks.map((stack) => (
             <ClientOrderStack
               key={stack.clientId}

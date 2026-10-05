@@ -1,10 +1,16 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Client, Order, AppDataBackup } from '../types';
+import { Client, Order, OrderPackage, AppDataBackup, ShippingRateConfig, ShippingType } from '../types';
 
 const DB_NAME = 'mispedidos_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const MIGRATION_DONE_KEY = 'mispedidos_migrated_to_idb';
 export const STORAGE_CHANGE_EVENT = 'mispedidos_data_change';
+
+export const DEFAULT_SHIPPING_RATES: ShippingRateConfig = {
+  'En mano': 0,
+  'Ordinario': 2.50,
+  'Certificado': 5.95,
+};
 
 interface MisPedidosDBSchema extends DBSchema {
   clients: {
@@ -24,6 +30,10 @@ interface MisPedidosDBSchema extends DBSchema {
       by_status: string;
     };
   };
+  settings: {
+    key: string;
+    value: any;
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<MisPedidosDBSchema>> | null = null;
@@ -32,31 +42,28 @@ function notifyChange() {
   window.dispatchEvent(new CustomEvent(STORAGE_CHANGE_EVENT));
 }
 
-/**
- * Initializes and returns the IndexedDB instance.
- * Automatically handles migration from localStorage if previous data exists.
- */
 export async function getDB(): Promise<IDBPDatabase<MisPedidosDBSchema>> {
   if (!dbPromise) {
     dbPromise = openDB<MisPedidosDBSchema>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        // Create clients object store
+      upgrade(db, oldVersion) {
         if (!db.objectStoreNames.contains('clients')) {
           const clientStore = db.createObjectStore('clients', { keyPath: 'id' });
           clientStore.createIndex('by_name', 'name');
           clientStore.createIndex('by_date', 'clientDate');
         }
 
-        // Create orders object store
         if (!db.objectStoreNames.contains('orders')) {
           const orderStore = db.createObjectStore('orders', { keyPath: 'id' });
           orderStore.createIndex('by_client', 'clientId');
           orderStore.createIndex('by_date', 'orderDate');
           orderStore.createIndex('by_status', 'status');
         }
+
+        if (!db.objectStoreNames.contains('settings')) {
+          db.createObjectStore('settings');
+        }
       },
     }).then(async (db) => {
-      // Perform seamless one-time migration from localStorage
       await checkAndMigrateFromLocalStorage(db);
       return db;
     });
@@ -64,16 +71,12 @@ export async function getDB(): Promise<IDBPDatabase<MisPedidosDBSchema>> {
   return dbPromise;
 }
 
-/**
- * Automatically migrates existing localStorage data into IndexedDB without loss.
- */
 async function checkAndMigrateFromLocalStorage(db: IDBPDatabase<MisPedidosDBSchema>) {
   try {
     const isMigrated = localStorage.getItem(MIGRATION_DONE_KEY);
     const rawClients = localStorage.getItem('mispedidos_clients');
     const rawOrders = localStorage.getItem('mispedidos_orders');
 
-    // Only run if not already migrated or if IndexedDB is empty but localStorage has data
     if (!isMigrated && (rawClients || rawOrders)) {
       const tx = db.transaction(['clients', 'orders'], 'readwrite');
       const clientsStore = tx.objectStore('clients');
@@ -92,7 +95,7 @@ async function checkAndMigrateFromLocalStorage(db: IDBPDatabase<MisPedidosDBSche
         const parsedOrders = JSON.parse(rawOrders);
         if (Array.isArray(parsedOrders)) {
           for (const order of parsedOrders) {
-            await ordersStore.put(order);
+            await ordersStore.put(normalizeOrder(order, DEFAULT_SHIPPING_RATES));
           }
         }
       }
@@ -106,13 +109,120 @@ async function checkAndMigrateFromLocalStorage(db: IDBPDatabase<MisPedidosDBSche
   }
 }
 
+// ==================== SETTINGS & SHIPPING RATES ====================
+
+export async function getShippingRates(): Promise<ShippingRateConfig> {
+  try {
+    const db = await getDB();
+    const rates = await db.get('settings', 'shipping_rates');
+    if (rates && typeof rates === 'object') {
+      return {
+        'En mano': typeof rates['En mano'] === 'number' ? rates['En mano'] : DEFAULT_SHIPPING_RATES['En mano'],
+        'Ordinario': typeof rates['Ordinario'] === 'number' ? rates['Ordinario'] : DEFAULT_SHIPPING_RATES['Ordinario'],
+        'Certificado': typeof rates['Certificado'] === 'number' ? rates['Certificado'] : DEFAULT_SHIPPING_RATES['Certificado'],
+      };
+    }
+    return { ...DEFAULT_SHIPPING_RATES };
+  } catch (err) {
+    console.error('Error reading shipping rates:', err);
+    return { ...DEFAULT_SHIPPING_RATES };
+  }
+}
+
+export async function saveShippingRates(
+  newRates: ShippingRateConfig,
+  updateExistingOrders = false
+): Promise<{ updatedOrdersCount: number }> {
+  const db = await getDB();
+  await db.put('settings', newRates, 'shipping_rates');
+
+  let updatedCount = 0;
+
+  if (updateExistingOrders) {
+    const tx = db.transaction('orders', 'readwrite');
+    const store = tx.objectStore('orders');
+    const orders = await store.getAll();
+
+    for (const order of orders) {
+      if (order.shippingType && newRates[order.shippingType as keyof ShippingRateConfig] !== undefined) {
+        const newFee = newRates[order.shippingType as keyof ShippingRateConfig];
+        if (order.shippingCost !== newFee) {
+          order.shippingCost = newFee;
+          order.updatedAt = new Date().toISOString();
+          await store.put(order);
+          updatedCount++;
+        }
+      }
+    }
+
+    await tx.done;
+  }
+
+  notifyChange();
+  return { updatedOrdersCount: updatedCount };
+}
+
+// ==================== NORMALIZATION HELPER ====================
+
+export function normalizeOrder(order: any, rates?: ShippingRateConfig): Order {
+  const currentRates = rates || DEFAULT_SHIPPING_RATES;
+  const shippingType = order.shippingType || '';
+  const defaultFee = shippingType && currentRates[shippingType as keyof ShippingRateConfig] !== undefined
+    ? currentRates[shippingType as keyof ShippingRateConfig]
+    : 0;
+
+  const shippingCost = typeof order.shippingCost === 'number' ? order.shippingCost : defaultFee;
+
+  let packages: OrderPackage[] = [];
+  if (Array.isArray(order.packages) && order.packages.length > 0) {
+    packages = order.packages.map((pkg: any, idx: number) => ({
+      id: pkg.id || `${order.id || 'ord'}_pkg_${idx + 1}`,
+      description: pkg.description !== undefined ? String(pkg.description) : '',
+      price: Number(pkg.price) || 0,
+      shippingType: pkg.shippingType !== undefined ? pkg.shippingType : order.shippingType,
+      status: pkg.status || order.status || 'pendiente',
+      photo: pkg.photo,
+    }));
+  } else {
+    packages = [{
+      id: `${order.id || 'ord'}_pkg_1`,
+      description: order.description || 'Artículo',
+      price: Number(order.price) || 0,
+      shippingType: order.shippingType || '',
+      status: order.status || 'pendiente',
+      photo: order.photo,
+    }];
+  }
+
+  const calculatedProductPrice = packages.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
+
+  return {
+    id: order.id,
+    description: order.description || (packages.length === 1 ? packages[0].description : `${packages.length} paquetes`),
+    clientId: order.clientId,
+    price: calculatedProductPrice,
+    shippingCost,
+    shippingAddress: order.shippingAddress || '',
+    isCustomAddress: !!order.isCustomAddress,
+    shippingType: order.shippingType || '',
+    orderDate: order.orderDate,
+    photo: order.photo || packages[0]?.photo,
+    status: order.status || 'pendiente',
+    readyDate: order.readyDate,
+    packagedDate: order.packagedDate,
+    shippedDate: order.shippedDate,
+    packages,
+    createdAt: order.createdAt || new Date().toISOString(),
+    updatedAt: order.updatedAt || new Date().toISOString(),
+  };
+}
+
 // ==================== CLIENTS ====================
 
 export async function getClients(): Promise<Client[]> {
   try {
     const db = await getDB();
     const clients = await db.getAll('clients');
-    // Sort descending by createdAt or clientDate
     return clients.sort((a, b) => new Date(b.createdAt || b.clientDate).getTime() - new Date(a.createdAt || a.clientDate).getTime());
   } catch (err) {
     console.error('Error reading clients from IndexedDB', err);
@@ -202,7 +312,9 @@ export async function deleteClient(clientId: string): Promise<void> {
 export async function getOrders(): Promise<Order[]> {
   try {
     const db = await getDB();
-    return await db.getAll('orders');
+    const rawOrders = await db.getAll('orders');
+    const rates = await getShippingRates();
+    return rawOrders.map((o) => normalizeOrder(o, rates));
   } catch (err) {
     console.error('Error reading orders from IndexedDB', err);
     return [];
@@ -212,10 +324,11 @@ export async function getOrders(): Promise<Order[]> {
 export async function saveOrders(orders: Order[]): Promise<void> {
   try {
     const db = await getDB();
+    const rates = await getShippingRates();
     const tx = db.transaction('orders', 'readwrite');
     await tx.objectStore('orders').clear();
     for (const order of orders) {
-      await tx.objectStore('orders').put(order);
+      await tx.objectStore('orders').put(normalizeOrder(order, rates));
     }
     await tx.done;
     notifyChange();
@@ -224,52 +337,109 @@ export async function saveOrders(orders: Order[]): Promise<void> {
   }
 }
 
-export async function saveOrder(order: Partial<Order> & { clientId: string; price: number; shippingType: Order['shippingType']; orderDate: string }): Promise<Order> {
+export async function saveOrder(
+  order: Partial<Order> & {
+    clientId: string;
+    shippingType: Order['shippingType'];
+    orderDate: string;
+    price?: number;
+    packages?: OrderPackage[];
+  }
+): Promise<Order> {
   const db = await getDB();
+  const rates = await getShippingRates();
   const now = new Date().toISOString();
+  const today = now.split('T')[0];
+
+  const defaultFee = order.shippingType && rates[order.shippingType as keyof ShippingRateConfig] !== undefined
+    ? rates[order.shippingType as keyof ShippingRateConfig]
+    : 0;
+
+  const shippingCost = typeof order.shippingCost === 'number' ? order.shippingCost : defaultFee;
+
+  let packages: OrderPackage[] = [];
+  if (Array.isArray(order.packages) && order.packages.length > 0) {
+    packages = order.packages.map((pkg, idx) => ({
+      id: pkg.id || `${order.id || 'ord'}_pkg_${idx + 1}`,
+      description: pkg.description !== undefined ? String(pkg.description) : '',
+      price: Number(pkg.price) || 0,
+      shippingType: pkg.shippingType !== undefined ? pkg.shippingType : order.shippingType,
+      status: pkg.status || order.status || 'pendiente',
+      photo: pkg.photo,
+    }));
+  } else {
+    packages = [{
+      id: `${order.id || 'ord'}_pkg_1`,
+      description: order.description || '',
+      price: Number(order.price) || 0,
+      shippingType: order.shippingType || '',
+      status: order.status || 'pendiente',
+      photo: order.photo,
+    }];
+  }
+
+  // Calculate order status dates
+  const newStatus = order.status || 'pendiente';
+  let readyDate = order.readyDate;
+  let packagedDate = order.packagedDate;
+  let shippedDate = order.shippedDate;
+
+  if (newStatus === 'listo') {
+    if (!readyDate) readyDate = today;
+  } else if (newStatus === 'empaquetado') {
+    if (!readyDate) readyDate = today;
+    if (!packagedDate) packagedDate = today;
+  } else if (newStatus === 'enviado') {
+    if (!readyDate) readyDate = today;
+    if (!packagedDate) packagedDate = today;
+    if (!shippedDate) shippedDate = today;
+  }
+
+  // When order changes status, also update all packages' status to match
+  packages = packages.map((pkg) => ({
+    ...pkg,
+    status: newStatus,
+  }));
+
+  const totalProductPrice = packages.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
 
   let targetOrder: Order;
 
   if (order.id) {
     const existing = await db.get('orders', order.id);
-    if (existing) {
-      targetOrder = {
-        ...existing,
-        ...order,
-        updatedAt: now,
-      };
-    } else {
-      targetOrder = {
-        id: order.id,
-        description: order.description?.trim() || '',
-        clientId: order.clientId,
-        price: order.price,
-        shippingAddress: order.shippingAddress?.trim() || '',
-        isCustomAddress: order.isCustomAddress || false,
-        shippingType: order.shippingType,
-        orderDate: order.orderDate,
-        photo: order.photo,
-        status: order.status || 'pendiente',
-        readyDate: order.readyDate,
-        shippedDate: order.shippedDate,
-        createdAt: now,
-        updatedAt: now,
-      };
-    }
-  } else {
     targetOrder = {
-      id: `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      ...(existing || {}),
+      ...order,
+      id: order.id,
+      shippingAddress: order.shippingAddress !== undefined ? order.shippingAddress : (existing?.shippingAddress || ''),
+      price: totalProductPrice,
+      shippingCost,
+      status: newStatus,
+      readyDate,
+      packagedDate,
+      shippedDate,
+      packages,
+      updatedAt: now,
+      createdAt: existing?.createdAt || order.createdAt || now,
+    };
+  } else {
+    const newId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    targetOrder = {
+      id: newId,
       description: order.description?.trim() || '',
       clientId: order.clientId,
-      price: order.price,
+      price: totalProductPrice,
+      shippingCost,
       shippingAddress: order.shippingAddress?.trim() || '',
       isCustomAddress: order.isCustomAddress || false,
       shippingType: order.shippingType,
       orderDate: order.orderDate,
-      photo: order.photo,
-      status: order.status || 'pendiente',
-      readyDate: order.readyDate,
-      shippedDate: order.shippedDate,
+      photo: order.photo || packages[0]?.photo,
+      status: newStatus,
+      readyDate,
+      packagedDate,
+      shippedDate,
+      packages: packages.map((pkg, idx) => ({ ...pkg, id: pkg.id || `${newId}_pkg_${idx + 1}` })),
       createdAt: now,
       updatedAt: now,
     };
@@ -295,12 +465,14 @@ export async function deleteOrder(orderId: string): Promise<void> {
 export async function exportBackup(): Promise<AppDataBackup> {
   const clients = await getClients();
   const orders = await getOrders();
+  const shippingRates = await getShippingRates();
 
   return {
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     clients,
     orders,
+    shippingRates,
   };
 }
 
@@ -313,6 +485,13 @@ export async function importBackup(
   }
 
   const db = await getDB();
+  const currentRates = backupData.shippingRates || (await getShippingRates());
+
+  // Save imported shipping rates if present
+  if (backupData.shippingRates) {
+    await db.put('settings', backupData.shippingRates, 'shipping_rates');
+  }
+
   const tx = db.transaction(['clients', 'orders'], 'readwrite');
   const clientStore = tx.objectStore('clients');
   const orderStore = tx.objectStore('orders');
@@ -325,7 +504,7 @@ export async function importBackup(
       await clientStore.put(client);
     }
     for (const order of backupData.orders) {
-      await orderStore.put(order);
+      await orderStore.put(normalizeOrder(order, currentRates));
     }
 
     await tx.done;
@@ -342,7 +521,7 @@ export async function importBackup(
     await clientStore.put(client);
   }
   for (const order of backupData.orders) {
-    await orderStore.put(order);
+    await orderStore.put(normalizeOrder(order, currentRates));
   }
 
   await tx.done;
@@ -360,12 +539,12 @@ export async function importBackup(
 export async function clearAllData(): Promise<void> {
   try {
     const db = await getDB();
-    const tx = db.transaction(['clients', 'orders'], 'readwrite');
+    const tx = db.transaction(['clients', 'orders', 'settings'], 'readwrite');
     await tx.objectStore('clients').clear();
     await tx.objectStore('orders').clear();
+    await tx.objectStore('settings').clear();
     await tx.done;
 
-    // Also clear localStorage backup flags
     localStorage.removeItem('mispedidos_clients');
     localStorage.removeItem('mispedidos_orders');
     localStorage.removeItem(MIGRATION_DONE_KEY);
@@ -376,9 +555,6 @@ export async function clearAllData(): Promise<void> {
   }
 }
 
-/**
- * Calculates current estimated storage size in KB using modern navigator.storage API
- */
 export async function getEstimatedStorageSize(): Promise<string> {
   try {
     if (navigator.storage && navigator.storage.estimate) {
@@ -391,7 +567,6 @@ export async function getEstimatedStorageSize(): Promise<string> {
     // fallback
   }
 
-  // Fallback estimation
   try {
     const db = await getDB();
     const clients = await db.getAll('clients');

@@ -96,9 +96,9 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
     ];
   }, [monthlyRevenueAndOrders, compareMonthA, compareMonthB]);
 
-  // 3. Status distribution
+  // 3. Status distribution (4 statuses)
   const statusDistribution = useMemo(() => {
-    const counts = { pendiente: 0, listo: 0, enviado: 0 };
+    const counts = { pendiente: 0, listo: 0, empaquetado: 0, enviado: 0 };
     orders.forEach((o) => {
       if (counts[o.status] !== undefined) counts[o.status]++;
     });
@@ -106,6 +106,7 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
     return [
       { name: '⏳ Pendientes', value: counts.pendiente, color: '#f59e0b' },
       { name: '📦 Listos', value: counts.listo, color: '#7c3aed' },
+      { name: '🎁 Empaquetados', value: counts.empaquetado, color: '#6366f1' },
       { name: '✅ Enviados', value: counts.enviado, color: '#10b981' },
     ];
   }, [orders]);
@@ -154,7 +155,7 @@ export const ChartsView: React.FC<ChartsViewProps> = ({ orders, clients }) => {
               Comparativa de Facturación y Pedidos entre Meses
             </h4>
             <p className="text-xs text-slate-500">
-              Selecciona dos meses para comparar el rendimiento
+              Selecciona dos meses para comparar el rendimiento (ingresos netos de artículos, sin envíos)
             </p>
           </div>
 

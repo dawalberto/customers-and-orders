@@ -12,11 +12,15 @@ import {
   X, 
   Copy,
   Lock,
-  Unlock
+  Unlock,
+  Plus,
+  Send,
+  Sparkles
 } from 'lucide-react';
-import { Order, Client, OrderStatus, ShippingType } from '../../types';
+import { Order, Client, OrderStatus, ShippingType, OrderPackage } from '../../types';
 import { formatDateSpanish, formatShortDate, formatCurrency, calculateDaysBetween, getTodayDateString } from '../../utils/dateUtils';
 import { ImageUploader } from '../common/ImageUploader';
+import { OrderPriceDisplay } from '../common/OrderPriceDisplay';
 
 interface OrderCardProps {
   order: Order;
@@ -40,21 +44,51 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const [copySuccess, setCopySuccess] = useState(false);
 
   // Edit form states
-  const [description, setDescription] = useState(order.description || '');
   const [clientId, setClientId] = useState(order.clientId);
-  const [price, setPrice] = useState(order.price ? String(order.price) : '');
   const [shippingAddress, setShippingAddress] = useState(order.shippingAddress);
   const [isCustomAddress, setIsCustomAddress] = useState(order.isCustomAddress || false);
   const [shippingType, setShippingType] = useState<ShippingType>(order.shippingType);
+  const [shippingCost, setShippingCost] = useState<number>(order.shippingCost ?? 0);
   const [orderDate, setOrderDate] = useState(order.orderDate || getTodayDateString());
   const [status, setStatus] = useState<OrderStatus>(order.status);
   const [readyDate, setReadyDate] = useState(order.readyDate || '');
+  const [packagedDate, setPackagedDate] = useState(order.packagedDate || '');
   const [shippedDate, setShippedDate] = useState(order.shippedDate || '');
   const [photo, setPhoto] = useState<string | undefined>(order.photo);
 
+  // Packages list in edit mode
+  const [editPackages, setEditPackages] = useState<Array<{
+    id: string;
+    description: string;
+    price: string;
+    shippingType: ShippingType;
+    status: OrderStatus;
+    photo?: string;
+  }>>(
+    (order.packages && order.packages.length > 0)
+      ? order.packages.map((p) => ({
+          id: p.id,
+          description: p.description,
+          price: String(p.price),
+          shippingType: p.shippingType || order.shippingType,
+          status: p.status || order.status,
+          photo: p.photo,
+        }))
+      : [
+          {
+            id: `${order.id}_pkg_1`,
+            description: order.description || '',
+            price: String(order.price || 0),
+            shippingType: order.shippingType,
+            status: order.status,
+            photo: order.photo,
+          },
+        ]
+  );
+
   const client = clients.find((c) => c.id === order.clientId);
 
-  // Status visual styles in monochrome/lilac harmony
+  // Status visual styles for the 4 states: pendiente, listo, empaquetado, enviado
   const getStatusConfig = (st: OrderStatus) => {
     switch (st) {
       case 'pendiente':
@@ -68,15 +102,23 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       case 'listo':
         return {
           label: '📦 Listo',
-          subLabel: 'Hecho (sin enviar)',
+          subLabel: 'Hecho (sin empaquetar)',
           badgeBg: 'bg-purple-100 text-purple-900 border-purple-200/80',
           cardBg: 'bg-white border-slate-200/90 hover:border-purple-300',
           dot: 'bg-purple-600',
         };
+      case 'empaquetado':
+        return {
+          label: '🎁 Empaquetado',
+          subLabel: 'Preparado para enviar',
+          badgeBg: 'bg-indigo-50 text-indigo-900 border-indigo-200/80',
+          cardBg: 'bg-white border-slate-200/90 hover:border-indigo-300',
+          dot: 'bg-indigo-600',
+        };
       case 'enviado':
         return {
           label: '✅ Enviado',
-          subLabel: 'Entregado/en camino',
+          subLabel: 'Entregado o en camino',
           badgeBg: 'bg-emerald-50 text-emerald-900 border-emerald-200/80',
           cardBg: 'bg-white border-slate-200/90 hover:border-emerald-300',
           dot: 'bg-emerald-600',
@@ -90,20 +132,33 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const handleQuickStatusChange = (newStatus: OrderStatus) => {
     const today = getTodayDateString();
     let updatedReadyDate = order.readyDate;
+    let updatedPackagedDate = order.packagedDate;
     let updatedShippedDate = order.shippedDate;
 
-    if (newStatus === 'listo' && !updatedReadyDate) {
-      updatedReadyDate = today;
+    if (newStatus === 'listo') {
+      if (!updatedReadyDate) updatedReadyDate = today;
+    } else if (newStatus === 'empaquetado') {
+      if (!updatedReadyDate) updatedReadyDate = today;
+      if (!updatedPackagedDate) updatedPackagedDate = today;
     } else if (newStatus === 'enviado') {
       if (!updatedReadyDate) updatedReadyDate = today;
+      if (!updatedPackagedDate) updatedPackagedDate = today;
       if (!updatedShippedDate) updatedShippedDate = today;
     }
+
+    // REQUIREMENT: Update packages' status to match order's status
+    const updatedPackages = (order.packages || []).map((pkg) => ({
+      ...pkg,
+      status: newStatus,
+    }));
 
     onUpdate({
       ...order,
       status: newStatus,
       readyDate: updatedReadyDate,
+      packagedDate: updatedPackagedDate,
       shippedDate: updatedShippedDate,
+      packages: updatedPackages,
       updatedAt: new Date().toISOString(),
     });
   };
@@ -114,10 +169,22 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     const today = getTodayDateString();
     if (newStatus === 'listo' && !readyDate) {
       setReadyDate(today);
+    } else if (newStatus === 'empaquetado') {
+      if (!readyDate) setReadyDate(today);
+      if (!packagedDate) setPackagedDate(today);
     } else if (newStatus === 'enviado') {
       if (!readyDate) setReadyDate(today);
+      if (!packagedDate) setPackagedDate(today);
       if (!shippedDate) setShippedDate(today);
     }
+
+    // Also update all package edit statuses
+    setEditPackages((prev) =>
+      prev.map((pkg) => ({
+        ...pkg,
+        status: newStatus,
+      }))
+    );
   };
 
   const handleClientSelectInEdit = (newClientId: string) => {
@@ -130,38 +197,83 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  // Badges of days elapsed
+  // Badges of days elapsed between 4 statuses
   const daysOrderToReady = (order.readyDate && order.orderDate)
     ? calculateDaysBetween(order.orderDate, order.readyDate)
     : null;
 
-  const daysReadyToShipped = (order.readyDate && order.shippedDate)
-    ? calculateDaysBetween(order.readyDate, order.shippedDate)
+  const daysReadyToPackaged = (order.readyDate && order.packagedDate)
+    ? calculateDaysBetween(order.readyDate, order.packagedDate)
+    : null;
+
+  const daysPackagedToShipped = (order.packagedDate && order.shippedDate)
+    ? calculateDaysBetween(order.packagedDate, order.shippedDate)
     : null;
 
   const daysOrderToShipped = (order.orderDate && order.shippedDate)
     ? calculateDaysBetween(order.orderDate, order.shippedDate)
     : null;
 
+  // Edit Mode: Package handlers
+  const handleAddEditPackage = () => {
+    setEditPackages((prev) => [
+      ...prev,
+      {
+        id: `pkg_${Date.now()}_${prev.length + 1}`,
+        description: '',
+        price: '',
+        shippingType: shippingType,
+        status: status,
+      },
+    ]);
+  };
+
+  const handleRemoveEditPackage = (idx: number) => {
+    if (editPackages.length <= 1) return;
+    setEditPackages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleUpdateEditPackage = (idx: number, field: string, val: any) => {
+    setEditPackages((prev) => {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], [field]: val };
+      return copy;
+    });
+  };
+
+  // Live sum in Edit Mode
+  const liveTotalProductsPrice = editPackages.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0);
+  const liveTotalWithShipping = liveTotalProductsPrice + (Number(shippingCost) || 0);
+
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId) return;
-    const numericPrice = parseFloat(price);
-    if (isNaN(numericPrice) || numericPrice < 0) return;
     if (!shippingType) return;
+    if (editPackages.length === 0) return;
+
+    const parsedPackages: OrderPackage[] = editPackages.map((pkg, idx) => ({
+      id: pkg.id || `pkg_${Date.now()}_${idx + 1}`,
+      description: pkg.description.trim() || `Paquete ${idx + 1}`,
+      price: parseFloat(pkg.price) || 0,
+      shippingType: pkg.shippingType || shippingType,
+      status: pkg.status || status,
+      photo: pkg.photo,
+    }));
 
     onUpdate({
       ...order,
-      description: description.trim(),
       clientId,
-      price: numericPrice,
+      price: liveTotalProductsPrice,
+      shippingCost: Number(shippingCost) || 0,
       shippingAddress: shippingAddress.trim(),
       isCustomAddress,
       shippingType,
       orderDate,
       status,
       readyDate: readyDate || undefined,
+      packagedDate: packagedDate || undefined,
       shippedDate: shippedDate || undefined,
+      packages: parsedPackages,
       photo,
       updatedAt: new Date().toISOString(),
     });
@@ -169,17 +281,27 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   };
 
   const handleCancelEdit = () => {
-    setDescription(order.description || '');
     setClientId(order.clientId);
-    setPrice(order.price ? String(order.price) : '');
     setShippingAddress(order.shippingAddress);
     setIsCustomAddress(order.isCustomAddress || false);
     setShippingType(order.shippingType);
+    setShippingCost(order.shippingCost ?? 0);
     setOrderDate(order.orderDate || getTodayDateString());
     setStatus(order.status);
     setReadyDate(order.readyDate || '');
+    setPackagedDate(order.packagedDate || '');
     setShippedDate(order.shippedDate || '');
     setPhoto(order.photo);
+    setEditPackages(
+      (order.packages || []).map((p) => ({
+        id: p.id,
+        description: p.description,
+        price: String(p.price),
+        shippingType: p.shippingType || order.shippingType,
+        status: p.status || order.status,
+        photo: p.photo,
+      }))
+    );
     setIsEditing(false);
   };
 
@@ -190,6 +312,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     setTimeout(() => setCopySuccess(false), 2000);
   };
 
+  const totalPackagesCount = order.packages?.length || 1;
+
   if (isEditing) {
     return (
       <form onSubmit={handleSaveEdit} className="bg-white rounded-3xl border border-purple-200 shadow-sm p-4 sm:p-5 transition overflow-x-hidden">
@@ -197,7 +321,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         <div className="flex items-center justify-between pb-3 mb-3 border-b border-purple-100">
           <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
             <Edit3 className="w-4 h-4 text-purple-600" />
-            Editar Pedido
+            Editar Pedido y Paquetes
           </span>
           <button
             type="button"
@@ -209,7 +333,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           </button>
         </div>
 
-        <div className="space-y-3.5 text-xs">
+        <div className="space-y-4 text-xs">
           {/* Client Selector */}
           <div className="min-w-0">
             <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -230,36 +354,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             </select>
           </div>
 
-          {/* Description */}
-          <div className="min-w-0">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Descripción del pedido</label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ej: Pendientes media luna con cuarzo rosa"
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm"
-            />
-          </div>
-
-          {/* Price, ShippingType (includes En mano), OrderDate */}
+          {/* Shipping Type, Cost and Order Date */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="min-w-0">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Precio (€) <span className="text-purple-600">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="24.50"
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm"
-              />
-            </div>
-
             <div className="min-w-0">
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Tipo de Envío <span className="text-purple-600">*</span>
@@ -270,11 +366,24 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 onChange={(e) => setShippingType(e.target.value as ShippingType)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm bg-white"
               >
-                <option value="" disabled>Elegir tipo</option>
-                <option value="Ordinario">Ordinario</option>
-                <option value="Certificado">Certificado</option>
-                <option value="En mano">En mano</option>
+                <option value="En mano">🤝 En mano</option>
+                <option value="Ordinario">✉️ Ordinario</option>
+                <option value="Certificado">📦 Certificado</option>
               </select>
+            </div>
+
+            <div className="min-w-0">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Coste Envío (€)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={shippingCost}
+                onChange={(e) => setShippingCost(parseFloat(e.target.value) || 0)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 outline-none text-sm bg-white font-bold"
+              />
             </div>
 
             <div className="min-w-0">
@@ -291,7 +400,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             </div>
           </div>
 
-          {/* Shipping Address with lock/unlock */}
+          {/* Shipping Address */}
           <div className="min-w-0">
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-semibold text-slate-700">Dirección de entrega</label>
@@ -327,12 +436,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             />
           </div>
 
-          {/* Status selector & Dates */}
+          {/* Status selector (4 states) */}
           <div className="p-3 bg-purple-50/40 rounded-2xl border border-purple-100 space-y-3 min-w-0">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Estado del Pedido</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['pendiente', 'listo', 'enviado'] as OrderStatus[]).map((st) => {
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {(['pendiente', 'listo', 'empaquetado', 'enviado'] as OrderStatus[]).map((st) => {
                   const cfg = getStatusConfig(st);
                   const isSel = status === st;
                   return (
@@ -353,35 +462,157 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               </div>
             </div>
 
-            {/* Ready date & Shipped date */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              {(status === 'listo' || status === 'enviado' || readyDate) && (
+            {/* Dates: readyDate, packagedDate, shippedDate */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              {(status === 'listo' || status === 'empaquetado' || status === 'enviado' || readyDate) && (
                 <div className="min-w-0">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                     📦 Fecha Listo
                   </label>
                   <input
                     type="date"
                     value={readyDate}
                     onChange={(e) => setReadyDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-xs bg-white"
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 focus:border-purple-500 outline-none text-xs bg-white"
+                  />
+                </div>
+              )}
+
+              {(status === 'empaquetado' || status === 'enviado' || packagedDate) && (
+                <div className="min-w-0">
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    🎁 Fecha Empaquetado
+                  </label>
+                  <input
+                    type="date"
+                    value={packagedDate}
+                    onChange={(e) => setPackagedDate(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 focus:border-purple-500 outline-none text-xs bg-white"
                   />
                 </div>
               )}
 
               {(status === 'enviado' || shippedDate) && (
                 <div className="min-w-0">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                     ✅ Fecha Envío
                   </label>
                   <input
                     type="date"
                     value={shippedDate}
                     onChange={(e) => setShippedDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-xs bg-white"
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 focus:border-purple-500 outline-none text-xs bg-white"
                   />
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* EDIT PACKAGES SECTION */}
+          <div className="space-y-2.5 pt-1">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                Paquetes / Artículos ({editPackages.length})
+              </span>
+              <button
+                type="button"
+                onClick={handleAddEditPackage}
+                className="inline-flex items-center gap-1 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-xl transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Añadir paquete</span>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {editPackages.map((pkg, idx) => (
+                <div key={pkg.id} className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-800">
+                      Paquete #{idx + 1}
+                    </span>
+                    {editPackages.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEditPackage(idx)}
+                        className="text-red-600 hover:text-red-700 p-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                      Descripción (Texto completo):
+                    </label>
+                    <textarea
+                      rows={2}
+                      required
+                      value={pkg.description}
+                      onChange={(e) => handleUpdateEditPackage(idx, 'description', e.target.value)}
+                      placeholder="Descripción detallada de las joyas/artículo..."
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 focus:border-purple-500 outline-none text-xs bg-white resize-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Precio (€):</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required
+                        value={pkg.price}
+                        onChange={(e) => handleUpdateEditPackage(idx, 'price', e.target.value)}
+                        className="w-full px-2.5 py-1 rounded-xl border border-slate-200 outline-none text-xs bg-white font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Envío:</label>
+                      <select
+                        value={pkg.shippingType}
+                        onChange={(e) => handleUpdateEditPackage(idx, 'shippingType', e.target.value as ShippingType)}
+                        className="w-full px-2 py-1 rounded-xl border border-slate-200 outline-none text-xs bg-white"
+                      >
+                        <option value="En mano">En mano</option>
+                        <option value="Ordinario">Ordinario</option>
+                        <option value="Certificado">Certificado</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Estado:</label>
+                      <select
+                        value={pkg.status}
+                        onChange={(e) => handleUpdateEditPackage(idx, 'status', e.target.value as OrderStatus)}
+                        className="w-full px-2 py-1 rounded-xl border border-slate-200 outline-none text-xs bg-white"
+                      >
+                        <option value="pendiente">⏳ Pendiente</option>
+                        <option value="listo">📦 Listo</option>
+                        <option value="empaquetado">🎁 Empaquetado</option>
+                        <option value="enviado">✅ Enviado</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Live totals */}
+            <div className="p-3 rounded-2xl bg-zinc-950 text-white space-y-1">
+              <div className="flex justify-between text-xs text-zinc-300">
+                <span>Suma artículos ({editPackages.length} paq.):</span>
+                <span className="font-bold text-white">{formatCurrency(liveTotalProductsPrice)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-zinc-300">
+                <span>Coste envío:</span>
+                <span className="font-bold text-purple-300">{formatCurrency(shippingCost)}</span>
+              </div>
+              <div className="pt-1 border-t border-zinc-800 flex justify-between text-xs font-bold text-white">
+                <span>Total Pedido:</span>
+                <span className="text-sm font-black text-purple-300">{formatCurrency(liveTotalWithShipping)}</span>
+              </div>
             </div>
           </div>
 
@@ -403,7 +634,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           </button>
           <button
             type="submit"
-            disabled={!clientId || !price || !shippingType}
+            disabled={!clientId || !shippingType || editPackages.length === 0}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-white shadow-2xs transition active:scale-95 disabled:opacity-50"
           >
             <Check className="w-4 h-4 text-purple-300" />
@@ -440,37 +671,37 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             </div>
           )}
 
-          {/* Main info row: Description, Client, Price, Tags */}
+          {/* Main info row: Client, Packages summary, Price Breakdown */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
               <div className="min-w-0">
-                <h4 className="font-bold text-slate-900 text-sm leading-snug line-clamp-1">
-                  {order.description || 'Pedido de pendientes/bisutería'}
-                </h4>
-                <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-0.5">
-                  <span className="font-medium text-slate-800 truncate">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-extrabold text-slate-900 text-sm sm:text-base leading-snug">
                     {client ? `${client.name} ${client.surnames || ''}` : 'Cliente no especificado'}
                   </span>
-                  {client?.tags && client.tags.length > 0 && (
-                    <span className="hidden sm:inline-flex items-center text-[10px] px-1.5 py-0.2 rounded-md bg-purple-50 text-purple-700 border border-purple-200/50">
-                      #{client.tags[0]}
-                    </span>
-                  )}
+                  <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200/60">
+                    {totalPackagesCount} {totalPackagesCount === 1 ? 'paquete' : 'paquetes'}
+                  </span>
+                </div>
+
+                <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                  <span className="font-semibold text-slate-700">{order.shippingType || 'Envío sin asignar'}</span>
+                  <span>·</span>
+                  <span>{formatShortDate(order.orderDate)}</span>
                 </div>
               </div>
 
-              {/* Price & Shipping */}
-              <div className="text-right shrink-0">
-                <span className="font-extrabold text-slate-950 text-base">
-                  {formatCurrency(order.price)}
-                </span>
-                <span className="block text-[10px] text-slate-500 font-medium">
-                  {order.shippingType || 'Envío sin asignar'}
-                </span>
+              {/* REQUIREMENT: Show 23€ + 5,95€(icono avión) = 28,95€ */}
+              <div className="self-start sm:self-auto sm:text-right shrink-0 pt-1 sm:pt-0">
+                <OrderPriceDisplay
+                  productPrice={order.price}
+                  shippingCost={order.shippingCost}
+                  size="md"
+                />
               </div>
             </div>
 
-            {/* Quick badges bar */}
+            {/* Quick status badges bar */}
             <div className="flex flex-wrap items-center justify-between gap-1.5 mt-2.5 pt-2 border-t border-slate-100 text-xs">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span
@@ -485,31 +716,39 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                     className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-200/60 shadow-2xs"
                     title={`De creación a listo: ${daysOrderToReady.label}`}
                   >
-                    ⏳ ➔ 📦 {daysOrderToReady.label}
+                    ⏳➔📦 {daysOrderToReady.label}
                   </span>
                 )}
-                {daysReadyToShipped && (
+                {daysReadyToPackaged && (
                   <span
                     className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-200/60 shadow-2xs"
-                    title={`De listo a enviado: ${daysReadyToShipped.label}`}
+                    title={`De listo a empaquetado: ${daysReadyToPackaged.label}`}
                   >
-                    📦 ➔ ✅ {daysReadyToShipped.label}
+                    📦➔🎁 {daysReadyToPackaged.label}
                   </span>
                 )}
-                {daysOrderToShipped && !daysReadyToShipped && (
+                {daysPackagedToShipped && (
+                  <span
+                    className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-200/60 shadow-2xs"
+                    title={`De empaquetado a enviado: ${daysPackagedToShipped.label}`}
+                  >
+                    🎁➔✅ {daysPackagedToShipped.label}
+                  </span>
+                )}
+                {daysOrderToShipped && !daysReadyToPackaged && !daysPackagedToShipped && (
                   <span
                     className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-200/60 shadow-2xs"
                     title={`Total de pedido a enviado: ${daysOrderToShipped.label}`}
                   >
-                    ⏳ ➔ ✅ {daysOrderToShipped.label}
+                    ⏳➔✅ {daysOrderToShipped.label}
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 text-slate-500 text-[11px]">
-                <span>{formatShortDate(order.orderDate)}</span>
+              <div className="flex items-center gap-1.5 text-slate-500 text-xs font-semibold">
+                <span>{isExpanded ? 'Ocultar detalles' : 'Ver paquetes'}</span>
                 {isExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                  <ChevronUp className="w-4 h-4 text-purple-600" />
                 ) : (
                   <ChevronDown className="w-4 h-4 text-slate-400" />
                 )}
@@ -519,16 +758,16 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         </div>
       </div>
 
-      {/* Expanded Detail Mode */}
+      {/* Expanded Detail Mode: SHOWS NESTED PACKAGES (PAQUETES) WITH FULL DESCRIPTIONS */}
       {isExpanded && (
-        <div className="px-3.5 pb-4 pt-2 border-t border-purple-100 bg-purple-50/20 space-y-3.5 text-xs text-slate-600 animate-in fade-in duration-150">
-          {/* Quick status progress buttons */}
+        <div className="px-3.5 pb-4 pt-3 border-t border-purple-100 bg-purple-50/20 space-y-3.5 text-xs text-slate-600 animate-in fade-in duration-150">
+          {/* Quick status progress buttons: 4 States */}
           <div className="bg-white p-2.5 rounded-2xl border border-purple-100/90 flex flex-wrap items-center justify-between gap-1.5 shadow-2xs">
             <span className="text-[11px] font-semibold text-slate-700 pl-1">
-              Cambiar estado:
+              Cambiar estado del pedido:
             </span>
-            <div className="flex items-center gap-1">
-              {(['pendiente', 'listo', 'enviado'] as OrderStatus[]).map((st) => {
+            <div className="flex flex-wrap items-center gap-1">
+              {(['pendiente', 'listo', 'empaquetado', 'enviado'] as OrderStatus[]).map((st) => {
                 const isCurrent = order.status === st;
                 const cfg = getStatusConfig(st);
                 return (
@@ -551,8 +790,62 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             </div>
           </div>
 
+          {/* HIERARCHICAL LEVEL 3: PAQUETES DE ESTE PEDIDO */}
+          <div className="space-y-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-purple-950 block">
+              📦 Artículos / Paquetes incluidos ({totalPackagesCount}):
+            </span>
+
+            <div className="space-y-2">
+              {order.packages && order.packages.length > 0 ? (
+                order.packages.map((pkg, idx) => {
+                  const pkgConfig = getStatusConfig(pkg.status || order.status);
+                  return (
+                    <div
+                      key={pkg.id || idx}
+                      className="bg-white p-3 rounded-2xl border border-purple-200/90 shadow-2xs space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+                          <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-900 text-[10px] flex items-center justify-center font-black">
+                            #{idx + 1}
+                          </span>
+                          Paquete {idx + 1}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${pkgConfig.badgeBg}`}>
+                            {pkgConfig.label}
+                          </span>
+                          <span className="font-black text-slate-950 text-xs sm:text-sm">
+                            {formatCurrency(pkg.price)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* REQUIREMENT: "Es de vital importancia que las descripciones de los paquetes siempre se vean enteras... nunca cortar el contenido y poner ..." */}
+                      <p className="text-xs text-slate-800 font-medium whitespace-pre-wrap break-words leading-relaxed pl-6.5">
+                        {pkg.description || 'Sin descripción'}
+                      </p>
+
+                      {pkg.shippingType && pkg.shippingType !== order.shippingType && (
+                        <div className="pl-6.5 text-[10px] text-purple-700 font-semibold">
+                          Envío específico: {pkg.shippingType}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="bg-white p-3 rounded-2xl border border-purple-100 text-slate-600">
+                  <p className="text-xs whitespace-pre-wrap break-words">{order.description || 'Artículo'}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Full elapsed days badges */}
-          {(daysOrderToReady || daysReadyToShipped || daysOrderToShipped) && (
+          {(daysOrderToReady || daysReadyToPackaged || daysPackagedToShipped || daysOrderToShipped) && (
             <div className="bg-white p-2.5 rounded-2xl border border-purple-100/70 space-y-1">
               <span className="block text-[11px] font-semibold text-slate-700 mb-1">
                 ⏱️ Tiempo entre cambios de estado:
@@ -563,9 +856,14 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                     ⏳ ➔ 📦 <strong>{daysOrderToReady.label}</strong>
                   </span>
                 )}
-                {daysReadyToShipped && (
+                {daysReadyToPackaged && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 font-medium">
-                    📦 ➔ ✅ <strong>{daysReadyToShipped.label}</strong>
+                    📦 ➔ 🎁 <strong>{daysReadyToPackaged.label}</strong>
+                  </span>
+                )}
+                {daysPackagedToShipped && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-900 border border-indigo-200 font-medium">
+                    🎁 ➔ ✅ <strong>{daysPackagedToShipped.label}</strong>
                   </span>
                 )}
                 {daysOrderToShipped && (
@@ -604,18 +902,22 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           </div>
 
           {/* Dates Breakdown */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-500 bg-white p-2.5 rounded-2xl border border-purple-100/60 shadow-2xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-500 bg-white p-2.5 rounded-2xl border border-purple-100/60 shadow-2xs">
             <div>
               <span className="block font-semibold text-slate-700">Fecha Pedido:</span>
               <span>{formatDateSpanish(order.orderDate)}</span>
             </div>
             <div>
               <span className="block font-semibold text-slate-700">Fecha Listo:</span>
-              <span>{order.readyDate ? formatDateSpanish(order.readyDate) : 'Aún no listo'}</span>
+              <span>{order.readyDate ? formatDateSpanish(order.readyDate) : '-'}</span>
+            </div>
+            <div>
+              <span className="block font-semibold text-slate-700">Fecha Empaquetado:</span>
+              <span>{order.packagedDate ? formatDateSpanish(order.packagedDate) : '-'}</span>
             </div>
             <div>
               <span className="block font-semibold text-slate-700">Fecha Envío:</span>
-              <span>{order.shippedDate ? formatDateSpanish(order.shippedDate) : 'Aún no enviado'}</span>
+              <span>{order.shippedDate ? formatDateSpanish(order.shippedDate) : '-'}</span>
             </div>
           </div>
 
@@ -653,7 +955,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               </button>
               <button
                 onClick={() => {
-                  if (window.confirm('¿Seguro que deseas eliminar este pedido?')) {
+                  if (window.confirm('¿Seguro que deseas eliminar este pedido y sus paquetes?')) {
                     onDelete(order.id);
                   }
                 }}

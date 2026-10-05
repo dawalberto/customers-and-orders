@@ -316,6 +316,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                               ? '⏳ Pendiente'
                               : order.status === 'listo'
                               ? '📦 Listo'
+                              : order.status === 'empaquetado'
+                              ? '🎁 Empaquetado'
                               : '✅ Enviado'}
                           </span>
                           <span>·</span>
