@@ -18,7 +18,7 @@ export const PWAInstallButton: React.FC = () => {
         title="Instalar como App en tu móvil o PC"
       >
         <Download className="w-3.5 h-3.5 text-purple-300" />
-        <span>Instalar App</span>
+        <span>Instalar</span>
       </button>
     );
   }
@@ -32,11 +32,11 @@ export const PWAInstallButton: React.FC = () => {
           title="Instalar en iPhone"
         >
           <Download className="w-3.5 h-3.5 text-purple-700" />
-          <span>Instalar en iOS</span>
+          <span>Instalar</span>
         </button>
 
         {showIOSGuide && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="fixed inset-0 top-0 left-0 h-dvh w-dvw z-50 flex items-end sm:items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
             <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl border border-purple-100 animate-in fade-in slide-in-from-bottom duration-200">
               <div className="flex items-center justify-between pb-3 border-b border-purple-100">
                 <div className="flex items-center gap-2">

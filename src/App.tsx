@@ -147,7 +147,7 @@ export default function App() {
           </button>
 
           {/* 2. NAVBAR: Centered P - C - E - A */}
-          <nav className="flex items-center gap-1 sm:gap-1.5 bg-purple-50/70 p-1 rounded-2xl border border-purple-100/90 shadow-2xs">
+          <nav className="flex flex-1 *:flex-1 *:justify-center items-center gap-1 sm:gap-1.5 bg-purple-50/70 p-1 rounded-2xl border border-purple-100/90 shadow-2xs">
             {/* Pedidos (P) */}
             <button
               onClick={() => navigateToTab('orders', true)}
