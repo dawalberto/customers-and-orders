@@ -154,7 +154,6 @@ export default function App() {
             >
               <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 pointer-events-none" />
               <span className="hidden sm:inline pointer-events-none">Pedidos</span>
-              <span className="sm:hidden font-extrabold pointer-events-none">P</span>
               {pendingOrdersCount > 0 && (
                 <span className="pointer-events-none px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-black shadow-2xs">
                   {pendingOrdersCount}
@@ -174,7 +173,6 @@ export default function App() {
             >
               <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 pointer-events-none" />
               <span className="hidden sm:inline pointer-events-none">Clientes</span>
-              <span className="sm:hidden font-extrabold pointer-events-none">C</span>
             </button>
 
             {/* Envíos (E) - NEW MENU OPTION */}
@@ -189,7 +187,6 @@ export default function App() {
             >
               <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4 -rotate-12 shrink-0 pointer-events-none" />
               <span className="hidden sm:inline pointer-events-none">Envíos</span>
-              <span className="sm:hidden font-extrabold pointer-events-none">E</span>
             </button>
 
             {/* Análisis (A) */}
@@ -204,7 +201,6 @@ export default function App() {
             >
               <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 pointer-events-none" />
               <span className="hidden sm:inline pointer-events-none">Análisis</span>
-              <span className="sm:hidden font-extrabold pointer-events-none">A</span>
             </button>
           </nav>
 
