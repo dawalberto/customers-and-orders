@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Search, UserPlus, Users, X, Filter } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, UserPlus, Users, X, Filter, User } from 'lucide-react';
 import { Client, Order } from '../../types';
 import { ClientCard } from './ClientCard';
 import { ClientModal } from './ClientModal';
@@ -12,6 +12,8 @@ interface ClientsViewProps {
   onDeleteClient: (clientId: string) => void | Promise<any>;
   onNavigateToOrders: (clientId: string) => void;
   onCreateOrderForClient: (clientId: string) => void;
+  focusedClientId?: string | null;
+  onClearFocusedClient?: () => void;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
@@ -21,10 +23,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onDeleteClient,
   onNavigateToOrders,
   onCreateOrderForClient,
+  focusedClientId,
+  onClearFocusedClient,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [activeFocusedId, setActiveFocusedId] = useState<string | null>(focusedClientId || null);
+
+  useEffect(() => {
+    setActiveFocusedId(focusedClientId || null);
+  }, [focusedClientId]);
 
   // Extract all unique tags
   const allTags = useMemo(() => {
@@ -35,8 +44,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     return Array.from(set).sort();
   }, [clients]);
 
-  // Filter clients comfortably by name, surnames, address, tags
+  // Filter clients comfortably by name, surnames, address, tags, or focused client
   const filteredClients = useMemo(() => {
+    if (activeFocusedId) {
+      const match = clients.filter((c) => c.id === activeFocusedId);
+      if (match.length > 0) return match;
+    }
+
     const query = normalizeSearch(searchTerm);
 
     return clients.filter((c) => {
@@ -62,7 +76,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         normPhone.includes(query)
       );
     });
-  }, [clients, searchTerm, selectedTag]);
+  }, [clients, searchTerm, selectedTag, activeFocusedId]);
+
+  const focusedClientObj = clients.find((c) => c.id === activeFocusedId);
+
+  const handleClearFocus = () => {
+    setActiveFocusedId(null);
+    if (onClearFocusedClient) onClearFocusedClient();
+  };
 
   return (
     <div className="space-y-4 overflow-x-hidden">
@@ -73,7 +94,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              if (activeFocusedId) handleClearFocus();
+              setSearchTerm(e.target.value);
+            }}
             placeholder="Buscar por nombre, dirección, etiqueta o teléfono..."
             className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white border border-slate-200/90 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none text-sm placeholder:text-slate-400 shadow-2xs transition"
           />
@@ -96,26 +120,53 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         </button>
       </div>
 
-      {/* Tag filters pill bar if tags exist */}
-      {allTags.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          <span className="text-xs font-medium text-slate-400 flex items-center gap-1 shrink-0 mr-1">
-            <Filter className="w-3 h-3" />
-            Etiquetas:
+      {/* REQUIREMENT: Dedicated Banner when filtered exclusively by client from order */}
+      {activeFocusedId && focusedClientObj && (
+        <div className="bg-purple-100/90 border border-purple-200 rounded-2xl p-3 flex items-center justify-between gap-3 text-xs text-purple-950 animate-in fade-in duration-150 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-purple-200 text-purple-900 flex items-center justify-center shrink-0">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] uppercase font-bold text-purple-700 block tracking-wider">
+                Ficha exclusiva de cliente:
+              </span>
+              <span className="font-extrabold text-slate-900 text-sm truncate block">
+                {focusedClientObj.name} {focusedClientObj.surnames}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={handleClearFocus}
+            className="inline-flex items-center gap-1 font-bold text-xs bg-white text-purple-900 hover:bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-xl transition shadow-2xs active:scale-95 shrink-0"
+            title="Ver todos los clientes"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Ver todos los clientes</span>
+          </button>
+        </div>
+      )}
+
+      {/* Tag filters pill bar if tags exist (when not in exclusive focus) */}
+      {!activeFocusedId && allTags.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+          <span className="text-slate-400 text-[11px] font-medium shrink-0 flex items-center gap-1 pl-1">
+            <Filter className="w-3 h-3 text-purple-400" />
+            <span>Etiquetas:</span>
           </span>
           <button
             onClick={() => setSelectedTag(null)}
             className={`px-2.5 py-1 rounded-xl text-xs font-semibold shrink-0 transition ${
               selectedTag === null
-                ? 'bg-zinc-900 text-white'
+                ? 'bg-zinc-900 text-white shadow-2xs'
                 : 'bg-white text-slate-600 hover:bg-purple-50 border border-slate-200'
             }`}
           >
             Todas ({clients.length})
           </button>
           {allTags.map((tag) => {
-            const count = clients.filter((c) => c.tags?.includes(tag)).length;
             const isSelected = selectedTag === tag;
+            const count = clients.filter((c) => c.tags?.includes(tag)).length;
             return (
               <button
                 key={tag}
@@ -153,12 +204,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         </div>
       ) : filteredClients.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-sm">
-          No se encontraron clientes con el filtro "{searchTerm}".
+          No se encontraron clientes con el filtro seleccionado.
           <div className="mt-3">
             <button
               onClick={() => {
                 setSearchTerm('');
                 setSelectedTag(null);
+                handleClearFocus();
               }}
               className="text-xs text-purple-700 font-semibold hover:underline"
             >

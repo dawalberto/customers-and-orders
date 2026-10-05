@@ -33,6 +33,7 @@ export default function App() {
 
   // Filter & Navigation states
   const [filterClientIdForOrders, setFilterClientIdForOrders] = useState<string | null>(null);
+  const [focusedClientId, setFocusedClientId] = useState<string | null>(null);
 
   // Modals for creating order for a specific client
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
@@ -86,9 +87,10 @@ export default function App() {
   }, []);
 
   const navigateToTab = (tab: ActiveTab, clearFilter = true) => {
-    // REQUIREMENT: "Si en algún momento se llega a filtrar el listado de pedidos por cliente... cuando me voy de esa vista y regreso todavía se mantiene el filtro... Una vez se abandona esta vista y vuelvo manualmente a esta lista debería tener los filtros limpios"
+    // REQUIREMENT: Clear filters when navigating deliberately to keep clean views
     if (clearFilter) {
       setFilterClientIdForOrders(null);
+      setFocusedClientId(null);
     }
     setActiveTab(tab);
     if (tab === 'data') {
@@ -235,6 +237,8 @@ export default function App() {
               setFilterClientIdForOrders(clientId);
               setIsNewOrderModalOpen(true);
             }}
+            focusedClientId={focusedClientId}
+            onClearFocusedClient={() => setFocusedClientId(null)}
           />
         )}
 
@@ -248,7 +252,8 @@ export default function App() {
             selectedClientId={filterClientIdForOrders}
             onClearClientFilter={() => setFilterClientIdForOrders(null)}
             onSelectClient={(cId) => {
-              navigateToTab('clients', true);
+              setFocusedClientId(cId);
+              navigateToTab('clients', false);
             }}
           />
         )}

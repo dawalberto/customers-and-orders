@@ -15,7 +15,8 @@ import {
   Unlock,
   Plus,
   Send,
-  Sparkles
+  Sparkles,
+  ArrowRightLeft
 } from 'lucide-react';
 import { Order, Client, OrderStatus, ShippingType, OrderPackage } from '../../types';
 import { formatDateSpanish, formatShortDate, formatCurrency, calculateDaysBetween, getTodayDateString } from '../../utils/dateUtils';
@@ -28,6 +29,7 @@ interface OrderCardProps {
   onUpdate: (updatedOrder: Order) => void;
   onDelete: (orderId: string) => void;
   onSelectClient?: (clientId: string) => void;
+  onMovePackage?: (pkg: OrderPackage, order: Order) => void;
   initialExpanded?: boolean;
 }
 
@@ -37,11 +39,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   onUpdate,
   onDelete,
   onSelectClient,
+  onMovePackage,
   initialExpanded = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [isEditing, setIsEditing] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isStatusTransitioning, setIsStatusTransitioning] = useState(false);
 
   // Edit form states
   const [clientId, setClientId] = useState(order.clientId);
@@ -128,8 +132,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   const statusConfig = getStatusConfig(order.status);
 
-  // Inline quick status change
+  // Inline quick status change WITH SMOOTH TRANSITION
   const handleQuickStatusChange = (newStatus: OrderStatus) => {
+    if (newStatus === order.status) return;
+
+    // Trigger graceful visual transition
+    setIsStatusTransitioning(true);
+
     const today = getTodayDateString();
     let updatedReadyDate = order.readyDate;
     let updatedPackagedDate = order.packagedDate;
@@ -152,12 +161,27 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       status: newStatus,
     }));
 
+    setTimeout(() => {
+      onUpdate({
+        ...order,
+        status: newStatus,
+        readyDate: updatedReadyDate,
+        packagedDate: updatedPackagedDate,
+        shippedDate: updatedShippedDate,
+        packages: updatedPackages,
+        updatedAt: new Date().toISOString(),
+      });
+      setIsStatusTransitioning(false);
+    }, 220);
+  };
+
+  // Modify status of a single package independently
+  const handleSinglePackageStatusChange = (pkgId: string, newPkgStatus: OrderStatus) => {
+    const updatedPackages = (order.packages || []).map((pkg) =>
+      pkg.id === pkgId ? { ...pkg, status: newPkgStatus } : pkg
+    );
     onUpdate({
       ...order,
-      status: newStatus,
-      readyDate: updatedReadyDate,
-      packagedDate: updatedPackagedDate,
-      shippedDate: updatedShippedDate,
       packages: updatedPackages,
       updatedAt: new Date().toISOString(),
     });
@@ -645,10 +669,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     );
   }
 
-  // Preview Mode & Detail Mode
+  // Preview Mode & Detail Mode (WITH SMOOTH STATUS TRANSITIONS)
   return (
     <div
-      className={`rounded-3xl border transition-all duration-200 ${statusConfig.cardBg} ${
+      className={`rounded-3xl border transition-all duration-300 ease-out ${statusConfig.cardBg} ${
+        isStatusTransitioning ? 'opacity-40 scale-[0.98]' : 'opacity-100 scale-100'
+      } ${
         isExpanded ? 'shadow-sm ring-1 ring-purple-200/80' : 'shadow-2xs hover:shadow-xs'
       } overflow-hidden`}
     >
@@ -805,7 +831,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                       key={pkg.id || idx}
                       className="bg-white p-3 rounded-2xl border border-purple-200/90 shadow-2xs space-y-1.5"
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <span className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
                           <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-900 text-[10px] flex items-center justify-center font-black">
                             #{idx + 1}
@@ -813,11 +839,40 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                           Paquete {idx + 1}
                         </span>
 
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${pkgConfig.badgeBg}`}>
-                            {pkgConfig.label}
-                          </span>
-                          <span className="font-black text-slate-950 text-xs sm:text-sm">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* PACKAGE STATUS SELECTOR: Allows changing each package status directly! */}
+                          <select
+                            value={pkg.status || order.status}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleSinglePackageStatusChange(pkg.id, e.target.value as OrderStatus);
+                            }}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer outline-none transition ${pkgConfig.badgeBg}`}
+                            title="Cambiar estado de este paquete individualmente"
+                          >
+                            <option value="pendiente">⏳ Pendiente</option>
+                            <option value="listo">📦 Listo</option>
+                            <option value="empaquetado">🎁 Empaquetado</option>
+                            <option value="enviado">✅ Enviado</option>
+                          </select>
+
+                          {/* REQUIREMENT: "mover a otro pedido" button */}
+                          {onMovePackage && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onMovePackage(pkg, order);
+                              }}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 hover:text-purple-950 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 px-2 py-0.5 rounded-lg transition active:scale-95 shadow-2xs"
+                              title="Mover este paquete a otro pedido"
+                            >
+                              <ArrowRightLeft className="w-3 h-3 text-purple-600" />
+                              <span>Mover a otro pedido</span>
+                            </button>
+                          )}
+
+                          <span className="font-black text-slate-950 text-xs sm:text-sm pl-1">
                             {formatCurrency(pkg.price)}
                           </span>
                         </div>

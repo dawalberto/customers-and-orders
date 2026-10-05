@@ -395,10 +395,19 @@ export async function saveOrder(
     if (!shippedDate) shippedDate = today;
   }
 
-  // When order changes status, also update all packages' status to match
+  // Check if existing order's status changed
+  let existing: Order | undefined = undefined;
+  if (order.id) {
+    existing = await db.get('orders', order.id);
+  }
+
+  const orderStatusChanged = existing ? (existing.status !== newStatus) : false;
+
+  // Only cascade order status to packages if the order itself changed status!
+  // Otherwise preserve each package's individual status.
   packages = packages.map((pkg) => ({
     ...pkg,
-    status: newStatus,
+    status: orderStatusChanged ? newStatus : (pkg.status || newStatus),
   }));
 
   const totalProductPrice = packages.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
@@ -406,7 +415,6 @@ export async function saveOrder(
   let targetOrder: Order;
 
   if (order.id) {
-    const existing = await db.get('orders', order.id);
     targetOrder = {
       ...(existing || {}),
       ...order,
@@ -457,6 +465,62 @@ export async function deleteOrder(orderId: string): Promise<void> {
     notifyChange();
   } catch (err) {
     console.error('Error deleting order from IndexedDB', err);
+  }
+}
+
+/**
+ * Moves a package from one order to another.
+ * If the source order becomes empty, it is automatically deleted.
+ */
+export async function movePackageToOrder(
+  packageId: string,
+  fromOrderId: string,
+  toOrderId: string
+): Promise<{ success: boolean; sourceOrderDeleted: boolean }> {
+  try {
+    const db = await getDB();
+    const fromOrderRaw = await db.get('orders', fromOrderId);
+    const toOrderRaw = await db.get('orders', toOrderId);
+
+    if (!fromOrderRaw || !toOrderRaw) {
+      return { success: false, sourceOrderDeleted: false };
+    }
+
+    const rates = await getShippingRates();
+    const fromOrder = normalizeOrder(fromOrderRaw, rates);
+    const toOrder = normalizeOrder(toOrderRaw, rates);
+
+    const packageIndex = fromOrder.packages.findIndex((p) => p.id === packageId);
+    if (packageIndex === -1) {
+      return { success: false, sourceOrderDeleted: false };
+    }
+
+    const [movingPackage] = fromOrder.packages.splice(packageIndex, 1);
+    const now = new Date().toISOString();
+
+    let sourceOrderDeleted = false;
+
+    // REQUIREMENT: "Si se mueven todos los paquetes de un pedido y dicho pedido se queda vacío se elimina automáticamente"
+    if (fromOrder.packages.length === 0) {
+      await db.delete('orders', fromOrderId);
+      sourceOrderDeleted = true;
+    } else {
+      fromOrder.price = fromOrder.packages.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
+      fromOrder.updatedAt = now;
+      await db.put('orders', fromOrder);
+    }
+
+    // Add package to target order and recalculate price
+    toOrder.packages.push(movingPackage);
+    toOrder.price = toOrder.packages.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
+    toOrder.updatedAt = now;
+    await db.put('orders', toOrder);
+
+    notifyChange();
+    return { success: true, sourceOrderDeleted };
+  } catch (err) {
+    console.error('Error moving package between orders:', err);
+    return { success: false, sourceOrderDeleted: false };
   }
 }
 

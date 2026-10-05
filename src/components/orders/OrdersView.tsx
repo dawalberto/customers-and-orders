@@ -14,7 +14,9 @@ import { Order, Client, OrdersViewMode, OrderPackage } from '../../types';
 import { OrderCard } from './OrderCard';
 import { ClientOrderStack } from './ClientOrderStack';
 import { OrderModal } from './OrderModal';
+import { MovePackageModal } from './MovePackageModal';
 import { normalizeSearch } from '../../utils/dateUtils';
+import { movePackageToOrder } from '../../services/storage';
 
 interface OrdersViewProps {
   orders: Order[];
@@ -49,6 +51,14 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
 
   // Preselected client for creating order from stack
   const [modalClientId, setModalClientId] = useState<string | undefined>(undefined);
+
+  // Moving package between orders
+  const [packageToMove, setPackageToMove] = useState<{ pkg: OrderPackage; sourceOrder: Order } | null>(null);
+
+  const handleConfirmMovePackage = async (packageId: string, fromOrderId: string, toOrderId: string) => {
+    await movePackageToOrder(packageId, fromOrderId, toOrderId);
+    setPackageToMove(null);
+  };
 
   // REQUIREMENT: Clear or update active client filter based on prop changes
   useEffect(() => {
@@ -456,6 +466,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               onDeleteOrder={onDeleteOrder}
               onSelectClient={onSelectClient}
               onAddOrderForClient={handleOpenAddModal}
+              onMovePackage={(pkg, order) => setPackageToMove({ pkg, sourceOrder: order })}
               defaultExpanded={clientStacks.length === 1 || stack.hasPending}
             />
           ))}
@@ -471,6 +482,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               onUpdate={onSaveOrder}
               onDelete={onDeleteOrder}
               onSelectClient={onSelectClient}
+              onMovePackage={(pkg, order) => setPackageToMove({ pkg, sourceOrder: order })}
             />
           ))}
         </div>
@@ -484,6 +496,17 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
         clients={clients}
         onQuickCreateClient={onQuickCreateClient}
         preselectedClientId={modalClientId}
+      />
+
+      {/* Move Package Modal */}
+      <MovePackageModal
+        isOpen={!!packageToMove}
+        onClose={() => setPackageToMove(null)}
+        packageToMove={packageToMove?.pkg || null}
+        sourceOrder={packageToMove?.sourceOrder || null}
+        allOrders={orders}
+        clients={clients}
+        onConfirmMove={handleConfirmMovePackage}
       />
     </div>
   );

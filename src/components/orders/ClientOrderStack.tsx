@@ -23,6 +23,7 @@ interface ClientOrderStackProps {
   onDeleteOrder: (orderId: string) => void | Promise<void>;
   onSelectClient?: (clientId: string) => void;
   onAddOrderForClient?: (clientId: string) => void;
+  onMovePackage?: (pkg: OrderPackage, order: Order) => void;
   defaultExpanded?: boolean;
 }
 
@@ -34,6 +35,7 @@ export const ClientOrderStack: React.FC<ClientOrderStackProps> = ({
   onDeleteOrder,
   onSelectClient,
   onAddOrderForClient,
+  onMovePackage,
   defaultExpanded = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
@@ -192,6 +194,7 @@ export const ClientOrderStack: React.FC<ClientOrderStackProps> = ({
                 onUpdate={onSaveOrder}
                 onDelete={onDeleteOrder}
                 onSelectClient={onSelectClient}
+                onMovePackage={onMovePackage}
                 initialExpanded={orders.length === 1}
               />
             ))}
